@@ -1,60 +1,81 @@
 """
-Constants and configuration parameters for the application.
+Application Manager
 
-This module contains constants and configuration parameters for the
-application. It also contains an enum of colors that can be used to
-represent colors in the application.
+This module manages configuration and logging for the application.
 """
-# src/config.py
-from enum import Enum
-
-import board
-
-# LED strip parameters
-NUM_PIXELS = 4  # Number of pixels in the LED strip
-PIXEL_PIN = board.D18  # Pin for the LED strip
-PIXEL_BRIGHTNESS = 0.1  # Brightness of the pixels (0.0 to 1.0)
-
-# Logging parameters
-LOG_FILENAME = "stripalerts.log"  # Name of the log file
-LOG_LEVEL = "INFO"  # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-
-# LED animation parameters
-ANIMATION_LOOP_SPEED = 0.001  # Speed of the animation loop in seconds
-RAINBOW_SPEED = 0.01  # Speed of the rainbow animation in seconds
-RAINBOW_PERIOD = 60  # Period of the rainbow animation in seconds
-SPARKLE_SPEED = 0.02  # Speed of the sparkle animation in seconds
-SPARKLE_PERIOD = 1  # Period of the sparkle animation in seconds
-SPARKLE_NUM_SPARKLES = 50  # Number of sparkles in the sparkle animation
-PULSE_PERIOD = 1  # Period of the pulse animation in seconds
-PULSE_SPEED = 0.01  # Speed of the pulse animation in seconds
-
-# LED alert parameters
-COLOR_TIP_AMOUNT = 35  # Amount of tokens to tip for a color change
-ALERT_DURATION = 2.5  # Duration of the alert animation in seconds
-COLOR_TIMEOUT = 600  # Duration of the color change timeout in seconds
-BACKGROUND_ANIMATION = "rainbow"  # Animation to play in the background
-ALERT_ANIMATION = "sparkle"  # Animation to play during an alert
-
-# API parameters
-API_TIMEOUT = 20  # Timeout for API requests in seconds
-
-# HTTP request parameters
-HTTP_REQUEST_TIMEOUT = 30  # Timeout for HTTP requests in seconds
+# src/setup.py
+import base64
+import configparser
+import logging
+from urllib.parse import quote
+from constants import API_TIMEOUT, LOG_FILENAME, LOG_LEVEL
 
 
-class ColorList(Enum):
-    """Enum of colors
+class Config:
+    """
+    Application Manager
 
-    Each color is represented as a tuple of three integers, corresponding to
-    the red, green, and blue values of the color. For example, the color
-    "red" is represented as (255, 0, 0)."""
+    Manages configuration and logging for the application.
+    """
 
-    RED = (255, 0, 0)
-    ORANGE = (255, 165, 0)
-    YELLOW = (255, 255, 0)
-    GREEN = (0, 255, 0)
-    BLUE = (0, 0, 255)
-    INDIGO = (75, 0, 130)
-    VIOLET = (148, 0, 211)
-    BLACK = (0, 0, 0)
+    def __init__(
+        self,
+        credentials_file="credentials.ini",
+        log_filename=LOG_FILENAME,
+        log_level=LOG_LEVEL,
+    ):
+        self.credentials_file = credentials_file
+        self.log_filename = log_filename
+        self.log_level = log_level
+        self.config = self.read_configuration()
+        self.logger = self.configure_logging()
+
+    def read_configuration(self):
+        """Read and process configuration from the config file."""
+        config = configparser.ConfigParser()
+
+        # Ensure the configuration file exists and can be read
+        try:
+            config.read(self.credentials_file)
+            if not config.sections():
+                raise FileNotFoundError(
+                    f"Configuration file '{self.credentials_file}' not found or is empty."
+                )
+
+            # Decode and URL-encode the credentials
+            user_name = self.decode_and_encode(config.get("Credentials", "user_name"))
+            api_token = self.decode_and_encode(config.get("Credentials", "api_token"))
+
+            # Construct the URL
+            base_url = "https://events.testbed.cb.dev/events"
+            initial_url = f"{base_url}/{user_name}/{api_token}/?timeout={API_TIMEOUT}"
+
+            return {
+                "user_name": user_name,
+                "api_token": api_token,
+                "initial_url": initial_url,
+            }
+
+        except (configparser.Error, FileNotFoundError) as error:
+            raise ValueError(f"Error reading configuration: {error}") from error
+
+    def decode_and_encode(self, encoded_value):
+        """
+        Decode from base64 and then URL-encode the value.
+        """
+        try:
+            decoded_value = base64.b64decode(encoded_value).decode("utf-8")
+            return quote(decoded_value)
+        except UnicodeDecodeError as error:
+            raise ValueError(f"Error decoding and encoding value: {error}") from error
+
+    def configure_logging(self):
+        """
+        Configure logging for the application.
+        """
+        logging.basicConfig(
+            filename=self.log_filename,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            level=self.log_level,
+        )
+        return logging.getLogger(__name__)
