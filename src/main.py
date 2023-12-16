@@ -88,10 +88,7 @@ class LEDController:
                 )
                 for color in ColorList
             ],
-            *[
-                Solid(pixels, color=color.value, name=color.name.lower())
-                for color in ColorList
-            ],
+            *[Solid(pixels, color=color.value, name=color.name.lower()) for color in ColorList],
             advance_interval=None,
             auto_clear=True,
         )
@@ -101,10 +98,8 @@ class LEDController:
         try:
             while not self.should_stop_animation.is_set():
                 # Check if the set time has passed since the last color change
-                if (
-                    self.last_color_change
-                    and datetime.now() - self.last_color_change
-                    > timedelta(seconds=COLOR_TIMEOUT)
+                if self.last_color_change and datetime.now() - self.last_color_change > timedelta(
+                    seconds=COLOR_TIMEOUT
                 ):
                     # Reset to default animation if time has elapsed
                     self.logger.info("Color timeout reached")
@@ -160,9 +155,7 @@ class EventClient:
 
         while url and not self.should_stop_processing.is_set():
             try:
-                async with self.session.get(
-                    url, timeout=HTTP_REQUEST_TIMEOUT
-                ) as response:
+                async with self.session.get(url, timeout=HTTP_REQUEST_TIMEOUT) as response:
                     if response.status == 200:
                         data = await response.json()
                         await self.process_events(data.get("events", []))
