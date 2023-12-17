@@ -42,6 +42,8 @@ api_token=$(echo -n 'example_password' | base64)" > config.ini
 security and is simply to keep from storing the keys in plaintext. *However, this is not encryption and should not
 be treated as such.*
 
+**DO NOT SHARE THIS FILE**
+
 (Example `config.ini` using the command above)
 ```ini
 [Credentials]
@@ -49,7 +51,6 @@ user_name=ZXhhbXBsZV91c2VybmFtZQ==
 api_token=ZXhhbXBsZV9wYXNzd29yZA==
 
 ```
-***DO NOT SHARE THIS FILE***
 
 ## Usage
 Run the `main.py` script to start the application:
