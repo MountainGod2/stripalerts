@@ -56,7 +56,7 @@ api_token=ZXhhbXBsZV9wYXNzd29yZA==
 Run the `main.py` script to start the application:
 
 ```bash
-cd stripalerts/
+cd ~/stripalerts
 python src/main.py
 ```
 
