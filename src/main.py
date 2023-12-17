@@ -145,27 +145,49 @@ class EventClient:
         self.user_color = None
 
     async def get_events(self):
-        """Get events from the events API"""
+        """Get events from the events API with retry mechanism for 521 HTTP response."""
         url = self.config["initial_url"]
         self.logger.debug("Starting event client.")
         self.logger.debug(f"Initial URL: {url}")
+        max_retries = 5  # Maximum number of retries
+        retry_delay = 10  # Delay in seconds between retries
 
         while url and not self.should_stop_processing.is_set():
-            try:
-                async with self.session.get(
-                    url, timeout=HTTP_REQUEST_TIMEOUT
-                ) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        await self.process_events(data.get("events", []))
-                        url = data.get("nextUrl")
-                        self.logger.debug(f"Next URL: {url}")
-                    else:
-                        self.logger.error("Error: %s", response.status)
-                        break
-            except aiohttp.ClientError as error:
-                self.logger.error("Client error occurred: %s", error)
-                break
+            retry_count = 0
+            while retry_count < max_retries:
+                try:
+                    async with self.session.get(
+                        url, timeout=HTTP_REQUEST_TIMEOUT
+                    ) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            await self.process_events(data.get("events", []))
+                            url = data.get("nextUrl")
+                            self.logger.debug(f"Next URL: {url}")
+                            break  # Break the loop if successful
+                        elif response.status == 521:
+                            self.logger.warning(
+                                f"Received HTTP 521 response. Retrying in {retry_delay} seconds..."
+                            )
+                            retry_count += 1
+                            await asyncio.sleep(retry_delay)
+                        elif response.status == 401:
+                            self.logger.error(
+                                "Invalid credentials. Please check your credentials.ini file."
+                                )
+                            return
+                        else:
+                            self.logger.error(f"Error: {response.status}")
+                            return  # Stop processing on other errors
+                except aiohttp.ClientResponseError as error:
+                    self.logger.error(f"Client error occurred: {error}")
+                    return  # Stop processing on client error
+
+            if retry_count == max_retries:
+                self.logger.error(
+                    "Maximum retry attempts reached. Stopping event processing."
+                )
+                return
 
     async def process_events(self, events):
         """Process events from the events API"""
@@ -192,7 +214,7 @@ class EventClient:
 
     async def handle_tip_action(self, tip_amount, tip_message):
         """Handle tip actions"""
-        if tip_amount > COLOR_TIP_AMOUNT:
+        if tip_amount >= COLOR_TIP_AMOUNT:
             await self.handle_color_tip(tip_message)
         else:
             await self.activate_alert_animation()
