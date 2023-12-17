@@ -37,10 +37,12 @@ BACKGROUND_ANIMATION = "rainbow"  # Animation to play in the background
 ALERT_ANIMATION = "sparkle"  # Animation to play during an alert
 
 # API parameters
-API_TIMEOUT = 20  # Timeout for API requests in seconds
+API_REQUEST_TIMEOUT = 20  # Timeout for API requests in seconds
 
 # HTTP request parameters
 HTTP_REQUEST_TIMEOUT = 30  # Timeout for HTTP requests in seconds
+HTTP_RETRY_DELAY = 5  # Delay between HTTP request retries in seconds
+HTTP_MAX_RETRIES = 10  # Maximum number of HTTP request retries
 
 
 class ColorList(Enum):

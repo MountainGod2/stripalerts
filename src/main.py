@@ -24,7 +24,9 @@ from constants import (
     BACKGROUND_ANIMATION,
     COLOR_TIMEOUT,
     COLOR_TIP_AMOUNT,
+    HTTP_MAX_RETRIES,
     HTTP_REQUEST_TIMEOUT,
+    HTTP_RETRY_DELAY,
     NUM_PIXELS,
     PIXEL_BRIGHTNESS,
     PIXEL_PIN,
@@ -145,12 +147,12 @@ class EventClient:
         self.user_color = None
 
     async def get_events(self):
-        """Get events from the events API with retry mechanism for 521 HTTP response."""
+        """Get events from the events API with retry mechanism for certain HTTP responses."""
         url = self.config["initial_url"]
         self.logger.debug("Starting event client.")
         self.logger.debug(f"Initial URL: {url}")
-        max_retries = 5  # Maximum number of retries
-        retry_delay = 10  # Delay in seconds between retries
+        max_retries = HTTP_MAX_RETRIES
+        retry_delay = HTTP_RETRY_DELAY
 
         while url and not self.should_stop_processing.is_set():
             retry_count = 0
@@ -162,22 +164,29 @@ class EventClient:
                         if response.status == 200:
                             data = await response.json()
                             await self.process_events(data.get("events", []))
-                            url = data.get("nextUrl")
+                            url = data.get(
+                                "nextUrl"
+                            )  # Update the URL for the next request
                             self.logger.debug(f"Next URL: {url}")
-                            break  # Break the loop if successful
-                        elif response.status == 521:
+                            break  # Break the retry loop if successful
+                        elif response.status in {520, 521}:
                             self.logger.warning(
-                                f"Received HTTP 521 response. Retrying in {retry_delay} seconds..."
+                                f"Received HTTP {response.status} response. Retrying in {retry_delay} seconds..."
                             )
                             retry_count += 1
                             await asyncio.sleep(retry_delay)
                         elif response.status == 401:
                             self.logger.error(
                                 "Invalid credentials. Please check your credentials.ini file."
-                                )
+                            )
+                            return
+                        elif response.status == 404:
+                            self.logger.error(
+                                "Invalid URL. Please check your config.py file."
+                            )
                             return
                         else:
-                            self.logger.error(f"Error: {response.status}")
+                            self.logger.error(f"Unhandled error: {response.status}")
                             return  # Stop processing on other errors
                 except aiohttp.ClientResponseError as error:
                     self.logger.error(f"Client error occurred: {error}")
