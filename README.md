@@ -1,6 +1,9 @@
 
 # Strip Alerts
 
+![demo](https://github.com/MountainGod2/stripalerts/assets/88257202/1a407b61-1bd5-450e-8bc3-9ff1d251f24b)
+
+
 ## Description
 This project allows controlling NeoPixels based on API events.
 
