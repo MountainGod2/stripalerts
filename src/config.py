@@ -40,17 +40,11 @@ class Config:
             if not config.has_section("Credentials"):
                 raise ValueError("Missing 'Credentials' section in config file.")
 
-            user_name = self.decode_and_encode(
-                config.get("Credentials", "user_name", fallback="")
-            )
-            api_token = self.decode_and_encode(
-                config.get("Credentials", "api_token", fallback="")
-            )
+            user_name = self.decode_and_encode(config.get("Credentials", "user_name", fallback=""))
+            api_token = self.decode_and_encode(config.get("Credentials", "api_token", fallback=""))
 
             base_url = "https://events.testbed.cb.dev/events"
-            initial_url = (
-                f"{base_url}/{user_name}/{api_token}/?timeout={API_REQUEST_TIMEOUT}"
-            )
+            initial_url = f"{base_url}/{user_name}/{api_token}/?timeout={API_REQUEST_TIMEOUT}"
 
             return {
                 "user_name": user_name,

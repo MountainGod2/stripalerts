@@ -17,6 +17,7 @@ from adafruit_led_animation.animation.rainbowsparkle import RainbowSparkle
 from adafruit_led_animation.animation.solid import Solid
 from adafruit_led_animation.sequence import AnimationSequence
 
+from config import Config
 from constants import (
     ALERT_ANIMATION,
     ALERT_DURATION,
@@ -39,7 +40,6 @@ from constants import (
     SPARKLE_SPEED,
     ColorList,
 )
-from config import Config
 
 
 class LEDController:
@@ -114,6 +114,8 @@ class LEDController:
 
         except RuntimeError as error:
             self.logger.error(f"Error in animation loop: {error}")
+        except KeyboardInterrupt as error:
+            self.logger.error(f"Keyboard interrupt: {error}")
 
     async def stop_animation(self):
         """Stop the current animation"""
@@ -191,6 +193,9 @@ class EventClient:
                 except aiohttp.ClientResponseError as error:
                     self.logger.error(f"Client error occurred: {error}")
                     return  # Stop processing on client error
+                except KeyboardInterrupt as error:
+                    self.logger.error(f"Keyboard interrupt: {error}")
+                    return
 
             if retry_count == max_retries:
                 self.logger.error(
@@ -211,6 +216,11 @@ class EventClient:
             user = tip_event["object"]["user"]
             tip_amount, tip_message = tip["tokens"], tip["message"]
             tip_username = user["username"]
+
+            # Strip the unwanted prefix from the tip_message
+            prefix = "-- Select One -- | "
+            if tip_message.startswith(prefix):
+                tip_message = tip_message[len(prefix) :]
 
             tip_info = f"{tip_username} tipped {tip_amount} tokens"
             if tip_message:
@@ -236,6 +246,8 @@ class EventClient:
 
     async def handle_color_tip(self, tip_message):
         """Handle color tip actions"""
+
+        # Rest of your function
         color_names = [color.name.lower() for color in ColorList]
         if tip_message.lower() in color_names:
             self.user_color = tip_message.lower()
@@ -312,6 +324,8 @@ async def main():
         asyncio.CancelledError,
     ) as error:
         logger_obj.error("An error occurred: %s", error)
+    except KeyboardInterrupt as error:
+        logger_obj.error("Keyboard interrupt: %s", error)
 
     finally:
         await event_client.close_session()
