@@ -11,10 +11,7 @@ from datetime import datetime, timedelta
 
 import aiohttp
 import neopixel
-from adafruit_led_animation.animation.pulse import Pulse
-from adafruit_led_animation.animation.rainbow import Rainbow
-from adafruit_led_animation.animation.rainbowsparkle import RainbowSparkle
-from adafruit_led_animation.animation.solid import Solid
+from adafruit_led_animation.animation import pulse, rainbow, rainbowsparkle, solid
 from adafruit_led_animation.sequence import AnimationSequence
 
 from config import Config
@@ -43,14 +40,20 @@ from constants import (
 
 
 class LEDController:
-    """LED Controller
+    """
+    LEDController class
 
-    This class controls the LEDs on the Raspberry Pi. It contains methods
-    for activating different animations, and for cleaning up the pixels
-    when the program exits.
+    Manages the LED strip and animations.
     """
 
     def __init__(self, pixels, config, logger):
+        """
+        Initialize the LEDController with NeoPixel object, configuration data, and logger.
+
+        :param pixels: NeoPixel object representing the LED strip.
+        :param config: Configuration data.
+        :param logger: Logger object for logging messages.
+        """
         self.pixels = pixels
         self.config = config
         self.logger = logger
@@ -59,13 +62,13 @@ class LEDController:
 
         # Create Animation Sequence
         self.animations = AnimationSequence(
-            Rainbow(
+            rainbow.Rainbow(
                 pixels,
                 speed=RAINBOW_SPEED,
                 period=RAINBOW_PERIOD,
                 name="rainbow",
             ),
-            RainbowSparkle(
+            rainbowsparkle.RainbowSparkle(
                 pixels,
                 speed=SPARKLE_SPEED,
                 period=SPARKLE_PERIOD,
@@ -73,17 +76,17 @@ class LEDController:
                 name="sparkle",
             ),
             *[
-                Pulse(
+                pulse.Pulse(
                     pixels,
                     speed=PULSE_SPEED,
                     color=color.value,
                     period=PULSE_PERIOD,
-                    name=color.name.lower() + "_pulse",
+                    name=f"{color.name.lower()}_pulse",
                 )
                 for color in ColorList
             ],
             *[
-                Solid(pixels, color=color.value, name=color.name.lower())
+                solid.Solid(pixels, color=color.value, name=color.name.lower())
                 for color in ColorList
             ],
             advance_interval=None,
@@ -91,56 +94,59 @@ class LEDController:
         )
 
     async def animation_loop(self):
-        """Animation loop"""
-        try:
-            while not self.should_stop_animation.is_set():
-                # Check if the set time has passed since the last color change
-                if (
-                    self.last_color_change
-                    and datetime.now() - self.last_color_change
-                    > timedelta(seconds=COLOR_TIMEOUT)
-                ):
-                    # Reset to default animation if time has elapsed
-                    self.logger.info("Color timeout reached")
-                    await self.activate_animation(BACKGROUND_ANIMATION)
-                    # Reset the timestamp to None as the default animation is now active
-                    self.last_color_change = None
-
-                # Continue with the current animation
-                self.animations.animate()
-                await asyncio.sleep(ANIMATION_LOOP_SPEED)
-
-            self.logger.debug("Animation loop stopped.")
-
-        except RuntimeError as error:
-            self.logger.error(f"Error in animation loop: {error}")
-        except KeyboardInterrupt as error:
-            self.logger.error(f"Keyboard interrupt: {error}")
+        """
+        Continuously animate the LEDs until the animation is stopped.
+        """
+        while not self.should_stop_animation.is_set():
+            if self.last_color_change and datetime.now() - self.last_color_change > timedelta(
+                seconds=COLOR_TIMEOUT
+            ):
+                self.logger.info("Color timeout reached")
+                await self.activate_animation(BACKGROUND_ANIMATION)
+                self.last_color_change = None
+            self.animations.animate()
+            await asyncio.sleep(ANIMATION_LOOP_SPEED)
 
     async def stop_animation(self):
-        """Stop the current animation"""
+        """
+        Set the flag to stop the animation loop.
+        """
         self.logger.debug("Stopping animation.")
         self.should_stop_animation.set()
 
     async def cleanup_pixels(self):
-        """Clean up the pixels"""
+        """
+        Clean up the pixels when the program exits.
+        """
         await self.stop_animation()
         self.logger.debug("Cleaning up pixels.")
         self.pixels.deinit()
 
-    async def activate_animation(self, color):
-        """Activate the specified animation"""
-        self.animations.activate(color)
+    async def activate_animation(self, animation_name):
+        """
+        Activate a specific animation by its name.
+
+        :param animation_name: The name of the animation to activate.
+        """
+        self.animations.activate(animation_name)
+        self.last_color_change = datetime.now() if animation_name != BACKGROUND_ANIMATION else None
 
 
 class EventClient:
-    """Event Client
+    """
+    EventClient class
 
-    This class connects to the events API and processes
-    events as they are received.
+    Manages the events API and processes events.
     """
 
     def __init__(self, config, led_controller, logger):
+        """
+        Initialize the EventClient with configuration data, an LED controller, and a logger.
+
+        :param config: Configuration data.
+        :param led_controller: LEDController object to control LED animations.
+        :param logger: Logger object for logging messages.
+        """
         self.logger = logger
         self.config = config
         self.led_controller = led_controller
@@ -149,10 +155,11 @@ class EventClient:
         self.user_color = None
 
     async def get_events(self):
-        """Get events from the events API with retry mechanism for certain HTTP responses."""
+        """
+        Retrieve and process events from the events API, with a retry mechanism for HTTP errors.
+        """
         url = self.config["initial_url"]
-        self.logger.debug("Starting event client.")
-        self.logger.debug(f"Initial URL: {url}")
+        self.logger.debug(f"Starting event client. Initial URL: {url}")
         max_retries = HTTP_MAX_RETRIES
         retry_delay = HTTP_RETRY_DELAY
 
@@ -160,98 +167,93 @@ class EventClient:
             retry_count = 0
             while retry_count < max_retries:
                 try:
-                    async with self.session.get(
-                        url, timeout=HTTP_REQUEST_TIMEOUT
-                    ) as response:
+                    async with self.session.get(url, timeout=HTTP_REQUEST_TIMEOUT) as response:
                         if response.status == 200:
                             data = await response.json()
                             await self.process_events(data.get("events", []))
-                            url = data.get(
-                                "nextUrl"
-                            )  # Update the URL for the next request
-                            self.logger.debug(f"Next URL: {url}")
-                            break  # Break the retry loop if successful
-                        elif response.status in {520, 521}:
+                            url = data.get("nextUrl")
+                            break
+                        if response.status in {502, 520, 521}:
                             self.logger.warning(
                                 f"Received HTTP {response.status} response. Retrying in {retry_delay} seconds..."
                             )
                             retry_count += 1
                             await asyncio.sleep(retry_delay)
                         elif response.status == 401:
-                            self.logger.error(
-                                "Invalid credentials. Please check your credentials.ini file."
-                            )
+                            self.logger.error("Invalid credentials.")
                             return
                         elif response.status == 404:
-                            self.logger.error(
-                                "Invalid URL. Please check your config.py file."
-                            )
+                            self.logger.error("Invalid URL.")
                             return
                         else:
-                            self.logger.error(f"Unhandled error: {response.status}")
-                            return  # Stop processing on other errors
+                            self.logger.error(f"Unhandled HTTP response: {response.status}")
+                            return
                 except aiohttp.ClientResponseError as error:
-                    self.logger.error(f"Client error occurred: {error}")
-                    return  # Stop processing on client error
-                except KeyboardInterrupt as error:
-                    self.logger.error(f"Keyboard interrupt: {error}")
+                    self.logger.error(f"Client error: {error}")
+                    return
+                except KeyboardInterrupt:
                     return
 
             if retry_count == max_retries:
-                self.logger.error(
-                    "Maximum retry attempts reached. Stopping event processing."
-                )
+                self.logger.error("Maximum retry attempts reached.")
                 return
 
     async def process_events(self, events):
-        """Process events from the events API"""
+        """
+        Process events retrieved from the API.
+
+        :param events: List of events to process.
+        """
         for event in events:
             if event.get("method") == "tip":
                 await self.process_tips(event)
 
     async def process_tips(self, tip_event):
-        """Process tip events from the events API"""
+        """
+        Process tip events.
+
+        :param tip_event: The tip event to process.
+        """
         try:
             tip = tip_event["object"]["tip"]
             user = tip_event["object"]["user"]
             tip_amount, tip_message = tip["tokens"], tip["message"]
             tip_username = user["username"]
+            tip_message = tip_message.split(" | ", 1)[-1]  # Handle message format
 
-            # Strip the unwanted prefix from the tip_message
-            prefix = "-- Select One -- | "
-            if tip_message.startswith(prefix):
-                tip_message = tip_message[len(prefix) :]
-
-            tip_info = f"{tip_username} tipped {tip_amount} tokens"
-            if tip_message:
-                tip_info += f" with message: {tip_message}"
-            self.logger.debug(tip_info)
-
+            self.logger.debug(
+                f"{tip_username} tipped {tip_amount} tokens with message: {tip_message}"
+            )
             await self.handle_tip_action(tip_amount, tip_message)
         except KeyError as error:
             self.logger.error(f"KeyError in process_tips: {error}")
 
     async def handle_tip_action(self, tip_amount, tip_message):
-        """Handle tip actions"""
+        """
+        Handle actions based on the tip amount and message.
+
+        :param tip_amount: The amount of the tip.
+        :param tip_message: The message associated with the tip.
+        """
         if tip_amount >= COLOR_TIP_AMOUNT:
             await self.handle_color_tip(tip_message)
         else:
             await self.activate_alert_animation()
 
         if self.led_controller.last_color_change:
-            self.logger.debug("Resuming color background animation.")
             await self.activate_color_background_animation(self.user_color)
         else:
             await self.activate_background_animation()
 
     async def handle_color_tip(self, tip_message):
-        """Handle color tip actions"""
+        """
+        Handle a tip that includes a color change request.
 
-        # Rest of your function
+        :param tip_message: The message associated with the tip.
+        """
         color_names = [color.name.lower() for color in ColorList]
         if tip_message.lower() in color_names:
             self.user_color = tip_message.lower()
-            self.led_controller.last_color_change = None  # Reset the timestamp
             self.led_controller.last_color_change = datetime.now()
             await self.activate_color_alert_animation(self.user_color)
             await self.activate_color_background_animation(self.user_color)
@@ -259,40 +261,57 @@ class EventClient:
             await self.activate_alert_animation()
 
     async def activate_alert_animation(self):
-        """Activate the alert animation"""
+        """
+        Activate the alert animation.
+        """
         await self.led_controller.activate_animation(ALERT_ANIMATION)
         await asyncio.sleep(ALERT_DURATION)
 
     async def activate_color_alert_animation(self, user_color):
-        """Activate the color alert animation"""
+        """
+        Activate the color alert animation.
+
+        :param user_color: The color to use for the alert animation.
+        """
         self.logger.info(f"Changing lights to {user_color}")
-        pulse_color = f"{user_color}_pulse"
-        await self.led_controller.activate_animation(pulse_color)
+        await self.led_controller.activate_animation(f"{user_color}_pulse")
         await asyncio.sleep(ALERT_DURATION)
 
     async def activate_color_background_animation(self, user_color):
-        """Activate the color background animation"""
+        """
+        Activate the color background animation.
+
+        :param user_color: The color to use for the background animation.
+        """
         await self.led_controller.activate_animation(user_color)
 
     async def activate_background_animation(self):
-        """Activate the background animation"""
+        """
+        Activate the default background animation.
+        """
         self.logger.debug("Resuming background animation")
         await self.led_controller.activate_animation(BACKGROUND_ANIMATION)
 
     async def stop_processing(self):
-        """Stop processing events"""
+        """
+        Signal to stop processing events.
+        """
         self.logger.debug("Stopping event client.")
         self.should_stop_processing.set()
 
     async def close_session(self):
-        """Close the session"""
+        """
+        Close the network session and stop processing events.
+        """
         await self.stop_processing()
         self.logger.debug("Closing session.")
         await self.session.close()
 
 
 async def main():
-    """Main entry point for the application"""
+    """
+    Main entry point for the application.
+    """
     pixel_obj = neopixel.NeoPixel(
         PIXEL_PIN,  # type: ignore
         NUM_PIXELS,
@@ -321,11 +340,10 @@ async def main():
     except (
         aiohttp.ClientError,
         aiohttp.ClientConnectionError,
-        asyncio.CancelledError,
     ) as error:
         logger_obj.error("An error occurred: %s", error)
-    except KeyboardInterrupt as error:
-        logger_obj.error("Keyboard interrupt: %s", error)
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        logger_obj.warning("Keyboard interrupt. Exiting...")
 
     finally:
         await event_client.close_session()
@@ -334,4 +352,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

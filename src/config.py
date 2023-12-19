@@ -9,7 +9,7 @@ import logging
 from typing import Dict, Union
 from urllib.parse import quote
 
-from constants import API_REQUEST_TIMEOUT, LOG_FILENAME, LOG_LEVEL
+from constants import API_RESPONSE_TIMEOUT, LOG_FILENAME, LOG_LEVEL
 
 
 class Config:
@@ -44,7 +44,7 @@ class Config:
             api_token = self.decode_and_encode(config.get("Credentials", "api_token", fallback=""))
 
             base_url = "https://events.testbed.cb.dev/events"
-            initial_url = f"{base_url}/{user_name}/{api_token}/?timeout={API_REQUEST_TIMEOUT}"
+            initial_url = f"{base_url}/{user_name}/{api_token}/?timeout={API_RESPONSE_TIMEOUT}"
 
             return {
                 "user_name": user_name,
