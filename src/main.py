@@ -175,7 +175,8 @@ class EventClient:
                             break
                         if response.status in {502, 520, 521}:
                             self.logger.warning(
-                                f"Received HTTP {response.status} response. Retrying in {retry_delay} seconds..."
+                                f"Received HTTP {response.status} response. \
+                                    Retrying in {retry_delay} seconds..."
                             )
                             retry_count += 1
                             await asyncio.sleep(retry_delay)
