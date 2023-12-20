@@ -5,15 +5,14 @@ This module contains constants and configuration parameters for the
 application. It also contains an enum of colors that can be used to
 represent colors in the application.
 """
-# src/config.py
 from enum import Enum
 
 import board
 
 # LED strip parameters
-NUM_PIXELS = 4  # Number of pixels in the LED strip
-PIXEL_PIN = board.D18  # Pin for the LED strip
-PIXEL_BRIGHTNESS = 0.1  # Brightness of the pixels (0.0 to 1.0)
+LED_NUM_PIXELS = 4  # Number of pixels in the LED strip
+LED_PIXEL_PIN = board.D18  # Pin for the LED strip
+LED_PIXEL_BRIGHTNESS = 0.1  # Brightness of the pixels (0.0 to 1.0)
 
 # Logging parameters
 LOG_FILENAME = "stripalerts.log"  # Name of the log file
@@ -45,7 +44,7 @@ HTTP_RETRY_DELAY = 5  # Delay between HTTP request retries in seconds
 HTTP_MAX_RETRIES = 10  # Maximum number of HTTP request retries
 
 
-class ColorList(Enum):
+class AlertColorList(Enum):
     """Enum of colors
 
     Each color is represented as a tuple of three integers, corresponding to

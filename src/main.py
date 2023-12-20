@@ -5,7 +5,6 @@ This module contains the main entry point for the application. It
 creates the LED controller and event client, and starts them in
 separate tasks.
 """
-# src/main.py
 import asyncio
 from datetime import datetime, timedelta
 
@@ -14,7 +13,7 @@ import neopixel
 from adafruit_led_animation.animation import pulse, rainbow, rainbowsparkle, solid
 from adafruit_led_animation.sequence import AnimationSequence
 
-from config import Config
+from config import AppConfig
 from constants import (
     ALERT_ANIMATION,
     ALERT_DURATION,
@@ -25,9 +24,9 @@ from constants import (
     HTTP_MAX_RETRIES,
     HTTP_REQUEST_TIMEOUT,
     HTTP_RETRY_DELAY,
-    NUM_PIXELS,
-    PIXEL_BRIGHTNESS,
-    PIXEL_PIN,
+    LED_NUM_PIXELS,
+    LED_PIXEL_BRIGHTNESS,
+    LED_PIXEL_PIN,
     PULSE_PERIOD,
     PULSE_SPEED,
     RAINBOW_PERIOD,
@@ -35,7 +34,7 @@ from constants import (
     SPARKLE_NUM_SPARKLES,
     SPARKLE_PERIOD,
     SPARKLE_SPEED,
-    ColorList,
+    AlertColorList,
 )
 
 
@@ -83,11 +82,11 @@ class LEDController:
                     period=PULSE_PERIOD,
                     name=f"{color.name.lower()}_pulse",
                 )
-                for color in ColorList
+                for color in AlertColorList
             ],
             *[
                 solid.Solid(pixels, color=color.value, name=color.name.lower())
-                for color in ColorList
+                for color in AlertColorList
             ],
             advance_interval=None,
             auto_clear=True,
@@ -174,11 +173,10 @@ class EventClient:
                             url = data.get("nextUrl")
                             break
                         if response.status in {502, 520, 521}:
-                            self.logger.warning(
-                                f"Received HTTP {response.status} response. \
-                                    Retrying in {retry_delay} seconds..."
-                            )
+                            self.logger.warning(f"Received HTTP {response.status} response.")
                             retry_count += 1
+                            self.logger.info(f"Retrying in {retry_delay} seconds.")
+                            self.logger.info(f"Retries remaining: {max_retries - retry_count}")
                             await asyncio.sleep(retry_delay)
                         elif response.status == 401:
                             self.logger.error("Invalid credentials.")
@@ -252,7 +250,7 @@ class EventClient:
 
         :param tip_message: The message associated with the tip.
         """
-        color_names = [color.name.lower() for color in ColorList]
+        color_names = [color.name.lower() for color in AlertColorList]
         if tip_message.lower() in color_names:
             self.user_color = tip_message.lower()
             self.led_controller.last_color_change = datetime.now()
@@ -314,14 +312,14 @@ async def main():
     Main entry point for the application.
     """
     pixel_obj = neopixel.NeoPixel(
-        PIXEL_PIN,  # type: ignore
-        NUM_PIXELS,
-        brightness=PIXEL_BRIGHTNESS,
+        LED_PIXEL_PIN,  # type: ignore
+        LED_NUM_PIXELS,
+        brightness=LED_PIXEL_BRIGHTNESS,
         auto_write=True,
     )
 
     # Initialize the Config object and read the configuration
-    config_obj = Config()
+    config_obj = AppConfig()
     config_data = config_obj.read_configuration()
     logger_obj = config_obj.logger  # Use the logger from the config object
 

@@ -12,7 +12,7 @@ from urllib.parse import quote
 from constants import API_RESPONSE_TIMEOUT, LOG_FILENAME, LOG_LEVEL
 
 
-class Config:
+class AppConfig:
     """
     Config class
 
