@@ -10,7 +10,12 @@ from datetime import datetime, timedelta
 
 import aiohttp
 import neopixel
-from adafruit_led_animation.animation import pulse, rainbow, rainbowsparkle, solid
+from adafruit_led_animation.animation import (
+    pulse,
+    rainbow,
+    rainbowsparkle,
+    solid,
+)
 from adafruit_led_animation.sequence import AnimationSequence
 
 from config import AppConfig
@@ -49,10 +54,8 @@ class LEDController:
         self.pixels = pixels
         self.config = config
         self.logger = logger
-        self.should_stop_animation = asyncio.Event()
         self.last_color_change = None
-
-    async def __aenter__(self):
+        self.should_stop_animation = asyncio.Event()
         # Create Animation Sequence
         self.animations = AnimationSequence(
             rainbow.Rainbow(
@@ -85,6 +88,8 @@ class LEDController:
             advance_interval=None,
             auto_clear=True,
         )
+
+    async def __aenter__(self):
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
@@ -95,12 +100,11 @@ class LEDController:
         Continuously animate the LEDs until the animation is stopped.
         """
         while not self.should_stop_animation.is_set():
-            if (
-                self.last_color_change
-                and datetime.now() - self.last_color_change
-                > timedelta(seconds=COLOR_TIMEOUT)
+            if self.last_color_change and datetime.now() - self.last_color_change > timedelta(
+                seconds=COLOR_TIMEOUT
             ):
-                self.logger.info("Color timeout reached")
+                self.logger.info("Color timeout reached, reverting to background animation.")
+
                 await self.activate_animation(BACKGROUND_ANIMATION)
                 self.last_color_change = None
             self.animations.animate()
@@ -128,9 +132,7 @@ class LEDController:
         :param animation_name: The name of the animation to activate.
         """
         self.animations.activate(animation_name)
-        self.last_color_change = (
-            datetime.now() if animation_name != BACKGROUND_ANIMATION else None
-        )
+        self.last_color_change = datetime.now() if animation_name != BACKGROUND_ANIMATION else None
 
 
 class EventClient:
@@ -146,9 +148,9 @@ class EventClient:
         self.logger = logger
         self.should_stop_processing = asyncio.Event()
         self.user_color = None
+        self.session = aiohttp.ClientSession()
 
     async def __aenter__(self):
-        self.session = aiohttp.ClientSession()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
@@ -167,23 +169,20 @@ class EventClient:
             retry_count = 0
             while retry_count < max_retries:
                 try:
-                    async with self.session.get(
-                        url, timeout=HTTP_REQUEST_TIMEOUT
-                    ) as response:
+                    async with self.session.get(url, timeout=HTTP_REQUEST_TIMEOUT) as response:
                         if response.status == 200:
                             data = await response.json()
                             await self.process_events(data.get("events", []))
                             url = data.get("nextUrl")
                             break
                         if response.status in {502, 520, 521}:
-                            self.logger.warning(
-                                f"Received HTTP {response.status} response."
-                            )
+                            log_message = f"Received HTTP {response.status} response"
+                            self.logger.warning(log_message)
+                            log_message = f"Retrying in {retry_delay} seconds"
+                            self.logger.info(log_message)
                             retry_count += 1
-                            self.logger.info(f"Retrying in {retry_delay} seconds.")
-                            self.logger.info(
-                                f"Retries remaining: {max_retries - retry_count}"
-                            )
+                            log_message = f"Retries remaining: {max_retries - retry_count}"
+                            self.logger.info(log_message)
                             await asyncio.sleep(retry_delay)
                         elif response.status == 401:
                             self.logger.error("Invalid credentials.")
@@ -192,9 +191,7 @@ class EventClient:
                             self.logger.error("Invalid URL.")
                             return
                         else:
-                            self.logger.error(
-                                f"Unhandled HTTP response: {response.status}"
-                            )
+                            self.logger.error(f"Unhandled HTTP response: {response.status}")
                             return
                 except aiohttp.ClientResponseError as error:
                     self.logger.error(f"Client error: {error}")
@@ -234,7 +231,8 @@ class EventClient:
             )
             await self.handle_tip_action(tip_amount, tip_message)
         except KeyError as error:
-            self.logger.error(f"KeyError in process_tips: {error}")
+            log_message = f"KeyError processing tips: {error}, in event: {tip_event}"
+            self.logger.error(log_message)
 
     async def handle_tip_action(self, tip_amount, tip_message):
         """
@@ -333,16 +331,14 @@ async def main():
     logger_obj = config_obj.logger
 
     try:
-        async with LEDController(
-            pixel_obj, config_data, logger_obj
-        ) as led_controller, EventClient(
+        async with LEDController(pixel_obj, config_data, logger_obj) as led_controller, EventClient(
             config_data, led_controller, logger_obj
         ) as event_client:
             # Create tasks for the event client and LED controller
             event_task = asyncio.create_task(event_client.get_events())
             led_task = asyncio.create_task(led_controller.animation_loop())
 
-            logger_obj.info("Starting program.")
+            logger_obj.info("Starting LED controller and event client.")
 
             await asyncio.gather(led_task, event_task)
 
@@ -355,7 +351,7 @@ async def main():
         logger_obj.warning("Keyboard interrupt. Exiting...")
 
     finally:
-        logger_obj.info("Exiting program.")
+        logger_obj.info("LED controller and event client stopped, exiting program.")
 
 
 if __name__ == "__main__":

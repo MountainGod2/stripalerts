@@ -53,7 +53,9 @@ class AppConfig:
             }
 
         except (configparser.Error, FileNotFoundError) as error:
-            raise ValueError(f"Error reading configuration: {error}") from error
+            log_message = f"Error reading configuration: {error}"
+            self.logger.error(log_message)
+            raise ValueError(log_message) from error
 
     def decode_and_encode(self, encoded_value: str) -> str:
         """
@@ -62,8 +64,11 @@ class AppConfig:
         try:
             decoded_value = base64.b64decode(encoded_value).decode("utf-8")
             return quote(decoded_value)
+
         except UnicodeDecodeError as error:
-            raise ValueError(f"Error decoding and encoding value: {error}") from error
+            log_message = f"Error decoding and encoding value: {error}"
+            self.logger.error(log_message)
+            raise ValueError(log_message) from error
 
     def configure_logging(self) -> logging.Logger:
         """
@@ -72,7 +77,9 @@ class AppConfig:
         # Convert log_level to its integer value if it's provided as a string
         numeric_level = logging.getLevelName(self.log_level)
         if not isinstance(numeric_level, int):
-            raise ValueError(f"Invalid log level: {self.log_level}")
+            log_message = f"Invalid log level: {self.log_level}"
+            self.logger.error(log_message)
+            raise ValueError(log_message)
 
         logging.basicConfig(
             filename=self.log_filename,
