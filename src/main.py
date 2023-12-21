@@ -46,29 +46,23 @@ class LEDController:
     """
 
     def __init__(self, pixels, config, logger):
-        """
-        Initialize the LEDController with NeoPixel object, configuration data, and logger.
-
-        :param pixels: NeoPixel object representing the LED strip.
-        :param config: Configuration data.
-        :param logger: Logger object for logging messages.
-        """
         self.pixels = pixels
         self.config = config
         self.logger = logger
         self.should_stop_animation = asyncio.Event()
         self.last_color_change = None
 
+    async def __aenter__(self):
         # Create Animation Sequence
         self.animations = AnimationSequence(
             rainbow.Rainbow(
-                pixels,
+                self.pixels,
                 speed=RAINBOW_SPEED,
                 period=RAINBOW_PERIOD,
                 name="rainbow",
             ),
             rainbowsparkle.RainbowSparkle(
-                pixels,
+                self.pixels,
                 speed=SPARKLE_SPEED,
                 period=SPARKLE_PERIOD,
                 num_sparkles=SPARKLE_NUM_SPARKLES,
@@ -76,7 +70,7 @@ class LEDController:
             ),
             *[
                 pulse.Pulse(
-                    pixels,
+                    self.pixels,
                     speed=PULSE_SPEED,
                     color=color.value,
                     period=PULSE_PERIOD,
@@ -85,20 +79,26 @@ class LEDController:
                 for color in AlertColorList
             ],
             *[
-                solid.Solid(pixels, color=color.value, name=color.name.lower())
+                solid.Solid(self.pixels, color=color.value, name=color.name.lower())
                 for color in AlertColorList
             ],
             advance_interval=None,
             auto_clear=True,
         )
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.cleanup_pixels()
 
     async def animation_loop(self):
         """
         Continuously animate the LEDs until the animation is stopped.
         """
         while not self.should_stop_animation.is_set():
-            if self.last_color_change and datetime.now() - self.last_color_change > timedelta(
-                seconds=COLOR_TIMEOUT
+            if (
+                self.last_color_change
+                and datetime.now() - self.last_color_change
+                > timedelta(seconds=COLOR_TIMEOUT)
             ):
                 self.logger.info("Color timeout reached")
                 await self.activate_animation(BACKGROUND_ANIMATION)
@@ -128,7 +128,9 @@ class LEDController:
         :param animation_name: The name of the animation to activate.
         """
         self.animations.activate(animation_name)
-        self.last_color_change = datetime.now() if animation_name != BACKGROUND_ANIMATION else None
+        self.last_color_change = (
+            datetime.now() if animation_name != BACKGROUND_ANIMATION else None
+        )
 
 
 class EventClient:
@@ -139,19 +141,18 @@ class EventClient:
     """
 
     def __init__(self, config, led_controller, logger):
-        """
-        Initialize the EventClient with configuration data, an LED controller, and a logger.
-
-        :param config: Configuration data.
-        :param led_controller: LEDController object to control LED animations.
-        :param logger: Logger object for logging messages.
-        """
-        self.logger = logger
         self.config = config
         self.led_controller = led_controller
-        self.session = aiohttp.ClientSession()
+        self.logger = logger
         self.should_stop_processing = asyncio.Event()
         self.user_color = None
+
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.close_session()
 
     async def get_events(self):
         """
@@ -166,17 +167,23 @@ class EventClient:
             retry_count = 0
             while retry_count < max_retries:
                 try:
-                    async with self.session.get(url, timeout=HTTP_REQUEST_TIMEOUT) as response:
+                    async with self.session.get(
+                        url, timeout=HTTP_REQUEST_TIMEOUT
+                    ) as response:
                         if response.status == 200:
                             data = await response.json()
                             await self.process_events(data.get("events", []))
                             url = data.get("nextUrl")
                             break
                         if response.status in {502, 520, 521}:
-                            self.logger.warning(f"Received HTTP {response.status} response.")
+                            self.logger.warning(
+                                f"Received HTTP {response.status} response."
+                            )
                             retry_count += 1
                             self.logger.info(f"Retrying in {retry_delay} seconds.")
-                            self.logger.info(f"Retries remaining: {max_retries - retry_count}")
+                            self.logger.info(
+                                f"Retries remaining: {max_retries - retry_count}"
+                            )
                             await asyncio.sleep(retry_delay)
                         elif response.status == 401:
                             self.logger.error("Invalid credentials.")
@@ -185,7 +192,9 @@ class EventClient:
                             self.logger.error("Invalid URL.")
                             return
                         else:
-                            self.logger.error(f"Unhandled HTTP response: {response.status}")
+                            self.logger.error(
+                                f"Unhandled HTTP response: {response.status}"
+                            )
                             return
                 except aiohttp.ClientResponseError as error:
                     self.logger.error(f"Client error: {error}")
@@ -321,20 +330,21 @@ async def main():
     # Initialize the Config object and read the configuration
     config_obj = AppConfig()
     config_data = config_obj.read_configuration()
-    logger_obj = config_obj.logger  # Use the logger from the config object
-
-    # Initialize the LEDController and EventClient with the configuration data
-    led_controller = LEDController(pixel_obj, config_data, logger_obj)
-    event_client = EventClient(config_data, led_controller, logger_obj)
+    logger_obj = config_obj.logger
 
     try:
-        # Create tasks for the event client and LED controller
-        event_task = asyncio.create_task(event_client.get_events())
-        led_task = asyncio.create_task(led_controller.animation_loop())
+        async with LEDController(
+            pixel_obj, config_data, logger_obj
+        ) as led_controller, EventClient(
+            config_data, led_controller, logger_obj
+        ) as event_client:
+            # Create tasks for the event client and LED controller
+            event_task = asyncio.create_task(event_client.get_events())
+            led_task = asyncio.create_task(led_controller.animation_loop())
 
-        logger_obj.info("Starting program.")
+            logger_obj.info("Starting program.")
 
-        await asyncio.gather(led_task, event_task)
+            await asyncio.gather(led_task, event_task)
 
     except (
         aiohttp.ClientError,
@@ -345,9 +355,7 @@ async def main():
         logger_obj.warning("Keyboard interrupt. Exiting...")
 
     finally:
-        await event_client.close_session()
-        await led_controller.cleanup_pixels()
-        logger_obj.info("Program exited.")
+        logger_obj.info("Exiting program.")
 
 
 if __name__ == "__main__":
