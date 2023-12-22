@@ -10,12 +10,7 @@ from datetime import datetime, timedelta
 
 import aiohttp
 import neopixel
-from adafruit_led_animation.animation import (
-    pulse,
-    rainbow,
-    rainbowsparkle,
-    solid,
-)
+from adafruit_led_animation.animation import pulse, rainbow, rainbowsparkle, solid
 from adafruit_led_animation.sequence import AnimationSequence
 
 from config import AppConfig
