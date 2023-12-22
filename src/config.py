@@ -38,9 +38,10 @@ class AppConfig:
             api_token = self.decode_and_encode(os.getenv("API_TOKEN", ""))
 
             base_url = os.getenv("BASE_URL", "")
-            # base_url = "https://events.testbed.cb.dev/events"
 
-            initial_url = f"{base_url}/{user_name}/{api_token}/?timeout={API_RESPONSE_TIMEOUT}"
+            initial_url = (
+                f"{base_url}/{user_name}/{api_token}/?timeout={API_RESPONSE_TIMEOUT}"
+            )
 
             return {
                 "user_name": user_name,
