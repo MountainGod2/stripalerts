@@ -39,9 +39,7 @@ class AppConfig:
 
             base_url = os.getenv("BASE_URL", "")
 
-            initial_url = (
-                f"{base_url}/{user_name}/{api_token}/?timeout={API_RESPONSE_TIMEOUT}"
-            )
+            initial_url = f"{base_url}/{user_name}/{api_token}/?timeout={API_RESPONSE_TIMEOUT}"
 
             return {
                 "user_name": user_name,

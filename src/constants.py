@@ -42,6 +42,9 @@ API_RESPONSE_TIMEOUT = 5  # Timeout for API requests in seconds
 HTTP_REQUEST_TIMEOUT = 30  # Timeout for HTTP requests in seconds
 HTTP_RETRY_DELAY = 5  # Delay between HTTP request retries in seconds
 HTTP_MAX_RETRIES = 10  # Maximum number of HTTP request retries
+HTTP_BACKOFF_FACTOR = 2  # Factor for HTTP request retry delays
+HTTP_MAX_BACKOFF = 60  # Maximum delay between HTTP request retries in seconds
+HTTP_INITIAL_BACKOFF = 1  # Initial delay between HTTP request retries in seconds
 
 
 class AlertColorList(Enum):
