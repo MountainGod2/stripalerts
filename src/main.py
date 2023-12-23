@@ -26,7 +26,6 @@ from constants import (
     HTTP_MAX_BACKOFF,
     HTTP_MAX_RETRIES,
     HTTP_REQUEST_TIMEOUT,
-    HTTP_RETRY_DELAY,
     LED_NUM_PIXELS,
     LED_PIXEL_BRIGHTNESS,
     LED_PIXEL_PIN,
@@ -161,7 +160,6 @@ class EventClient:
         url = self.config["initial_url"]
         self.logger.debug(f"Starting event client. Initial URL: {url}")
         max_retries = HTTP_MAX_RETRIES
-        retry_delay = HTTP_RETRY_DELAY
         initial_backoff = HTTP_INITIAL_BACKOFF
         max_backoff = HTTP_MAX_BACKOFF
         backoff_factor = HTTP_BACKOFF_FACTOR
@@ -179,14 +177,18 @@ class EventClient:
                             url = data.get("nextUrl")
                             break
                         if response.status in {502, 520, 521}:
-                            log_message = f"Received HTTP {response.status} response"
-                            self.logger.warning(log_message)
-                            log_message = f"Retrying in {retry_delay} seconds"
-                            self.logger.info(log_message)
+                            self.logger.warning(
+                                f"Received HTTP {response.status} response. Retrying..."
+                            )
+                            self.logger.debug(f"Current backoff time: {current_backoff} seconds.")
+                            self.logger.info(f"Retry attempt: {retry_count + 1} of {max_retries}.")
+                            await asyncio.sleep(current_backoff)
                             retry_count += 1
-                            log_message = f"Retries remaining: {max_retries - retry_count}"
-                            self.logger.info(log_message)
-                            await asyncio.sleep(retry_delay)
+                            current_backoff = min(max_backoff, current_backoff * backoff_factor)
+                            self.logger.debug(
+                                f"Next backoff time will be: {current_backoff} seconds."
+                            )
+
                         elif response.status == 401:
                             self.logger.error("Invalid credentials.")
                             return
@@ -202,14 +204,8 @@ class EventClient:
                 except KeyboardInterrupt:
                     return
 
-                if retry_count < max_retries:
-                    await asyncio.sleep(current_backoff)
-                    current_backoff = min(max_backoff, current_backoff * backoff_factor)
-                    retry_count += 1
-
             if retry_count == max_retries:
-                self.logger.error("Maximum retry attempts reached.")
-                return
+                raise MaxRetriesExceededException("Maximum HTTP retries exceeded")
 
     async def process_events(self, events):
         """
@@ -322,6 +318,12 @@ class EventClient:
         await self.session.close()
 
 
+class MaxRetriesExceededException(Exception):
+    """
+    Exception raised when the maximum number of HTTP retries is exceeded.
+    """
+
+
 async def main():
     """
     Main entry point for the application.
@@ -357,6 +359,8 @@ async def main():
         logger_obj.error("An error occurred: %s", error)
     except (KeyboardInterrupt, asyncio.CancelledError):
         logger_obj.warning("Keyboard interrupt. Exiting...")
+    except MaxRetriesExceededException:
+        logger_obj.error("Maximum retries exceeded. Exiting...")
 
     finally:
         logger_obj.info("LED controller and event client stopped, exiting program.")

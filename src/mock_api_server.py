@@ -3,6 +3,7 @@ Mock API server for the application.
 
 This module simulates the API server for the application.
 """
+import argparse
 import threading
 import time
 
@@ -10,7 +11,10 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-app = Flask(__name__)
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="Mock API Server")
+parser.add_argument("--response-code", type=int, default=200, help="Response code to return")
+args = parser.parse_args()
 
 
 class EventManager:
@@ -66,7 +70,7 @@ class EventManager:
         Get the next URL.
         """
         last_id = self.create_event_id(False)
-        return f"{base_url}/events/{username}/{token}/?i={last_id}&timeout=10"
+        return f"{base_url}events/{username}/{token}/?i={last_id}&timeout=10"
 
     def get_latest_event(self):
         """
@@ -83,26 +87,40 @@ event_manager = EventManager()
 @app.route("/events/<username>/<token>/")
 def events(username, token):
     """
-    Get the events.
+    Handle the events endpoint.
     """
     timeout = request.args.get("timeout", default=10, type=int)
     timeout = max(0, min(timeout, 90))  # Enforce the 0-90 seconds range
     start_time = time.time()
+
+    if args.response_code == 521:
+        return jsonify({"message": "Service Unavailable"}), 521
+
+    if args.response_code == 500:
+        return jsonify({"message": "Internal Server Error"}), 500
+
     while time.time() - start_time < timeout:
         event = event_manager.get_latest_event()
         if event:
-            return jsonify(
-                {
-                    "events": [event],
-                    "nextUrl": event_manager.get_next_url(request.host_url, username, token),
-                }
+            return (
+                jsonify(
+                    {
+                        "events": [event],
+                        "nextUrl": event_manager.get_next_url(request.host_url, username, token),
+                    }
+                ),
+                args.response_code,
             )
         time.sleep(1)
-    return jsonify(
-        {
-            "events": [],
-            "nextUrl": event_manager.get_next_url(request.host_url, username, token),
-        }
+
+    return (
+        jsonify(
+            {
+                "events": [],
+                "nextUrl": event_manager.get_next_url(request.host_url, username, token),
+            }
+        ),
+        args.response_code,
     )
 
 

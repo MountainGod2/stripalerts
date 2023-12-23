@@ -16,7 +16,7 @@ LED_PIXEL_BRIGHTNESS = 0.1  # Brightness of the pixels (0.0 to 1.0)
 
 # Logging parameters
 LOG_FILENAME = "stripalerts.log"  # Name of the log file
-LOG_LEVEL = "INFO"  # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+LOG_LEVEL = "DEBUG"  # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 
 # LED animation parameters
 ANIMATION_LOOP_SPEED = 0.01  # Speed of the animation loop in seconds
@@ -40,11 +40,10 @@ API_RESPONSE_TIMEOUT = 5  # Timeout for API requests in seconds
 
 # HTTP request parameters
 HTTP_REQUEST_TIMEOUT = 30  # Timeout for HTTP requests in seconds
-HTTP_RETRY_DELAY = 5  # Delay between HTTP request retries in seconds
 HTTP_MAX_RETRIES = 10  # Maximum number of HTTP request retries
 HTTP_BACKOFF_FACTOR = 2  # Factor for HTTP request retry delays
-HTTP_MAX_BACKOFF = 60  # Maximum delay between HTTP request retries in seconds
-HTTP_INITIAL_BACKOFF = 1  # Initial delay between HTTP request retries in seconds
+HTTP_MAX_BACKOFF = 30  # Maximum delay between HTTP request retries in seconds
+HTTP_INITIAL_BACKOFF = 2  # Initial delay between HTTP request retries in seconds
 
 
 class AlertColorList(Enum):
