@@ -98,14 +98,10 @@ class LEDController:
         Continuously animate the LEDs until the animation is stopped.
         """
         while not self.should_stop_animation.is_set():
-            if (
-                self.last_color_change
-                and datetime.now() - self.last_color_change
-                > timedelta(seconds=COLOR_TIMEOUT)
+            if self.last_color_change and datetime.now() - self.last_color_change > timedelta(
+                seconds=COLOR_TIMEOUT
             ):
-                self.logger.info(
-                    "Color timeout reached, reverting to background animation."
-                )
+                self.logger.info("Color timeout reached, reverting to background animation.")
 
                 await self.activate_animation(BACKGROUND_ANIMATION)
                 self.last_color_change = None
@@ -134,9 +130,7 @@ class LEDController:
         :param animation_name: The name of the animation to activate.
         """
         self.animations.activate(animation_name)
-        self.last_color_change = (
-            datetime.now() if animation_name != BACKGROUND_ANIMATION else None
-        )
+        self.last_color_change = datetime.now() if animation_name != BACKGROUND_ANIMATION else None
 
 
 class EventClient:
@@ -178,9 +172,7 @@ class EventClient:
 
             while retry_count < max_retries:
                 try:
-                    async with self.session.get(
-                        url, timeout=HTTP_REQUEST_TIMEOUT
-                    ) as response:
+                    async with self.session.get(url, timeout=HTTP_REQUEST_TIMEOUT) as response:
                         if response.status == 200:
                             data = await response.json()
                             await self.process_events(data.get("events", []))
@@ -192,9 +184,7 @@ class EventClient:
                             log_message = f"Retrying in {retry_delay} seconds"
                             self.logger.info(log_message)
                             retry_count += 1
-                            log_message = (
-                                f"Retries remaining: {max_retries - retry_count}"
-                            )
+                            log_message = f"Retries remaining: {max_retries - retry_count}"
                             self.logger.info(log_message)
                             await asyncio.sleep(retry_delay)
                         elif response.status == 401:
@@ -204,9 +194,7 @@ class EventClient:
                             self.logger.error("Invalid URL.")
                             return
                         else:
-                            self.logger.error(
-                                f"Unhandled HTTP response: {response.status}"
-                            )
+                            self.logger.error(f"Unhandled HTTP response: {response.status}")
                             return
                 except aiohttp.ClientResponseError as error:
                     self.logger.error(f"Client error: {error}")
@@ -351,9 +339,7 @@ async def main():
     logger_obj = config_obj.logger
 
     try:
-        async with LEDController(
-            pixel_obj, config_data, logger_obj
-        ) as led_controller, EventClient(
+        async with LEDController(pixel_obj, config_data, logger_obj) as led_controller, EventClient(
             config_data, led_controller, logger_obj
         ) as event_client:
             # Create tasks for the event client and LED controller

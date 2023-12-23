@@ -1,96 +1,118 @@
-from flask import Flask, jsonify, request
-import time
+"""
+Mock API server for the application.
+
+This module simulates the API server for the application.
+"""
 import threading
+import time
+
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-# Global variable to store the latest event
-latest_event = None
+app = Flask(__name__)
 
 
-def create_event_id(has_event):
+class EventManager:
     """
-    Create an event ID based on the current epoch time.
-    Append '-0' if there is an event.
+    Event manager class.
     """
-    epoch_time = int(time.time())
-    return f"{epoch_time}-0" if has_event else str(epoch_time)
 
+    def __init__(self):
+        self.latest_event = None
 
-def generate_event():
-    """
-    Generate a new event.
-    """
-    global latest_event
-    event_id = create_event_id(True)
-    latest_event = {
-        "method": "tip",
-        "object": {
-            "broadcaster": "user_name",
-            "tip": {"isAnon": False, "message": "red", "tokens": 35},
-            "user": {
-                "colorGroup": "l",
-                "fcAutoRenew": False,
-                "gender": "m",
-                "hasDarkmode": False,
-                "hasTokens": True,
-                "inFanclub": False,
-                "inPrivateShow": False,
-                "isBroadcasting": True,
-                "isFollower": False,
-                "isMod": False,
-                "isOwner": False,
-                "isSilenced": False,
-                "isSpying": False,
-                "language": "en",
-                "recentTips": "tons",
-                "subgender": "",
-                "username": "myFavoriteTipper",
+    def create_event_id(self, has_event):
+        """
+        Create an event ID.
+        """
+        epoch_time = int(time.time())
+        return f"{epoch_time}-0" if has_event else str(epoch_time)
+
+    def generate_event(self):
+        """
+        Generate an event.
+        """
+        event_id = self.create_event_id(True)
+        self.latest_event = {
+            "method": "tip",
+            "object": {
+                "broadcaster": "user_name",
+                "tip": {"isAnon": False, "message": "red", "tokens": 35},
+                "user": {
+                    "colorGroup": "l",
+                    "fcAutoRenew": False,
+                    "gender": "m",
+                    "hasDarkmode": False,
+                    "hasTokens": True,
+                    "inFanclub": False,
+                    "inPrivateShow": False,
+                    "isBroadcasting": True,
+                    "isFollower": False,
+                    "isMod": False,
+                    "isOwner": False,
+                    "isSilenced": False,
+                    "isSpying": False,
+                    "language": "en",
+                    "recentTips": "tons",
+                    "subgender": "",
+                    "username": "myFavoriteTipper",
+                },
             },
-        },
-        "id": event_id,
-    }
+            "id": event_id,
+        }
+
+    def get_next_url(self, base_url, username, token):
+        """
+        Get the next URL.
+        """
+        last_id = self.create_event_id(False)
+        return f"{base_url}/events/{username}/{token}/?i={last_id}&timeout=10"
+
+    def get_latest_event(self):
+        """
+        Get the latest event.
+        """
+        event = self.latest_event
+        self.latest_event = None  # Clear the event after getting it
+        return event
 
 
-def get_next_url(base_url, username, token):
-    """
-    Generate the nextUrl dynamically.
-    """
-    last_id = create_event_id(False)
-    return f"{base_url}/events/{username}/{token}/?i={last_id}&timeout=10"
+event_manager = EventManager()
 
 
 @app.route("/events/<username>/<token>/")
 def events(username, token):
     """
-    Endpoint to return events data with long polling.
+    Get the events.
     """
-    global latest_event
     timeout = request.args.get("timeout", default=10, type=int)
     timeout = max(0, min(timeout, 90))  # Enforce the 0-90 seconds range
     start_time = time.time()
     while time.time() - start_time < timeout:
-        if latest_event:  # If there is an event, return it
-            event = latest_event
-            latest_event = None  # Clear the event after sending
+        event = event_manager.get_latest_event()
+        if event:
             return jsonify(
                 {
                     "events": [event],
-                    "nextUrl": get_next_url(request.host_url, username, token),
+                    "nextUrl": event_manager.get_next_url(request.host_url, username, token),
                 }
             )
-        time.sleep(1)  # Sleep to avoid busy waiting
-
+        time.sleep(1)
     return jsonify(
-        {"events": [], "nextUrl": get_next_url(request.host_url, username, token)}
+        {
+            "events": [],
+            "nextUrl": event_manager.get_next_url(request.host_url, username, token),
+        }
     )
 
 
-# Background thread to simulate event creation
 def simulate_event_creation():
+    """
+    Simulate event creation.
+    """
     while True:
-        generate_event()
-        time.sleep(10)  # Generate a new event every 10 seconds
+        event_manager.generate_event()
+        time.sleep(10)
 
 
 threading.Thread(target=simulate_event_creation, daemon=True).start()
