@@ -2,6 +2,7 @@
 credentials.*
 config.ini
 output.txt
+.pylintrc
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
