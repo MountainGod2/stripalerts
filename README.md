@@ -1,5 +1,6 @@
-
 # Chaturbate Events API and LED Controller
+
+![291103405-1a407b61-1bd5-450e-8bc3-9ff1d251f24b](https://github.com/MountainGod2/stripalerts/assets/88257202/6237796c-c9ec-4da8-8411-5bb8e18e95e8)
 
 This Python script utilizes the Chaturbate Events API to process tip events and controls an LED strip to provide visual alerts. When certain conditions are met, such as receiving a specific number of tokens, the LED strip displays different animations or colors.
 
