@@ -3,7 +3,9 @@ This is a simple example of how to use the Chaturbate Events API to process tips
 It will fetch events from the API and log any tips.
 """
 import asyncio
+import json
 import logging
+import logging.config
 import os
 import time
 from enum import Enum
@@ -15,8 +17,10 @@ from adafruit_led_animation.animation import pulse, rainbow, rainbowsparkle, sol
 from adafruit_led_animation.sequence import AnimationSequence
 from dotenv import load_dotenv
 
+from log_formatter import align_logs
+
 # Alert settings
-ALERT_LENGTH = 5  # Alert animation length in seconds
+ALERT_LENGTH = 3  # Alert animation length in seconds
 COLOR_ACTIVE_TIME = 600  # Duration for which color remains active (10 minutes)
 ALERT_TOKENS = 35  # Number of tokens to trigger a color alert
 
@@ -24,9 +28,27 @@ ALERT_TOKENS = 35  # Number of tokens to trigger a color alert
 LED_COUNT = 100  # Number of LED pixels.
 LED_PIN = board.D18  # GPIO pin connected to the pixels (18 is PCM).
 LED_BRIGHTNESS = 0.1  # Float from 0.0 (min) to 1.0 (max)
+ANIMATION_SPEED = 0.01  # Animation speed
 
-# Setup module-level logger
-logger = logging.getLogger(__name__)
+# Web request settings
+MAX_RETRY_DELAY = 60  # Maximum retry delay in seconds
+RETRY_FACTOR = 2  # Factor by which to increase retry delay
+INITIAL_RETRY_DELAY = 2  # Initial retry delay in seconds
+TIMEOUT_BUFFER_FACTOR = 2  # Factor by which to decrease api timeout
+
+# Animation settings
+RAINBOW_PERIOD = 60  # Rainbow animation period in seconds
+RAINBOW_SPEED = 0.01  # Rainbow animation speed
+SPARKLE_PERIOD = 60  # Sparkle animation period in seconds
+SPARKLE_SPEED = 0.1  # Sparkle animation speed
+SPARKLE_NUM_SPARKLES = 5  # Sparkle animation number of sparkles
+SPARKLE_BRIGHTNESS = 0.5  # Sparkle animation brightness
+PULSE_PERIOD = int(ALERT_LENGTH / (2 / 3))
+PULSE_SPEED = 0.01  # Pulse animation speed
+PULSE_BRIGHTNESS = 0.5  # Pulse animation brightness
+
+# Time constants
+ONE_MINUTE = 60  # Number of seconds in one minute
 
 
 class AlertColorList(Enum):
@@ -61,7 +83,7 @@ class LEDController:
         self.animations = self._create_animations()
         self.current_color = None
         self.color_set_time = None
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(f"{__name__}.LEDController")
 
     def _create_animations(self):
         """
@@ -71,22 +93,24 @@ class LEDController:
             AnimationSequence: The animation sequence.
         """
         animations = [
-            rainbow.Rainbow(self.pixels, speed=0.01, period=60, name="rainbow"),
+            rainbow.Rainbow(
+                self.pixels, speed=RAINBOW_SPEED, period=RAINBOW_PERIOD, name="rainbow"
+            ),
             rainbowsparkle.RainbowSparkle(
                 self.pixels,
-                speed=0.1,
-                period=60,
-                num_sparkles=5,
+                speed=SPARKLE_SPEED,
+                period=SPARKLE_PERIOD,
+                num_sparkles=SPARKLE_NUM_SPARKLES,
                 name="sparkle",
-                background_brightness=0.5,
+                background_brightness=SPARKLE_BRIGHTNESS,
             ),
         ]
         animations += [
             pulse.Pulse(
                 self.pixels,
-                speed=0.01,
+                speed=PULSE_SPEED,
                 color=color.value,
-                period=2,
+                period=PULSE_PERIOD,
                 name=f"{color.name}_pulse",
             )
             for color in AlertColorList
@@ -107,23 +131,29 @@ class LEDController:
                 and self.color_set_time is not None
                 and (time.time() - self.color_set_time > COLOR_ACTIVE_TIME)
             ):
-                self.current_color = None  # Reset the color after the duration
+                # If so, reset the animation and clear the current color
+                self.current_color = None
                 self.logger.info("Color alert duration expired. Resetting to rainbow.")
                 self.animations.activate("rainbow")
 
             self.animations.animate()
-            await asyncio.sleep(0)
+            await asyncio.sleep(ANIMATION_SPEED)
 
     async def activate_normal_alert(self):
         """
         Activate a normal alert.
         """
+
+        # Store the previous state so we can return to it after the alert
         previous_state = self.animations.current_animation.name
 
         self.logger.debug("Activating normal alert.")
+
+        # Activate the sparkle animation
         self.animations.activate("sparkle")
         await asyncio.sleep(ALERT_LENGTH)
 
+        # Return to the previous state stored above
         self.animations.activate(previous_state)
 
     async def activate_color_alert(self, color):
@@ -136,18 +166,23 @@ class LEDController:
         self.current_color = color
         self.color_set_time = time.time()
 
-        self.logger.debug(f"Activating color alert: {color}.")
+        self.logger.debug("Activating color alert: %s", color.lower())
+
+        # Activate the pulse animation for the selected color
         self.animations.activate(f"{color}_pulse")
         await asyncio.sleep(ALERT_LENGTH)
 
-        if COLOR_ACTIVE_TIME < 60:
-            # Convert to seconds if less than 60 seconds
+        # Convert to seconds if less than 60 seconds
+        if COLOR_ACTIVE_TIME < ONE_MINUTE:
             color_time = f"{COLOR_ACTIVE_TIME} seconds"
-        else:
-            # Convert to minutes if longer than 60 seconds
-            color_time = f"{COLOR_ACTIVE_TIME // 60} minutes"
 
-        self.logger.info(f"Setting lights to {color.lower()} for {color_time}.")
+        # Convert to minutes if longer than 60 seconds
+        else:
+            color_time = f"{COLOR_ACTIVE_TIME // ONE_MINUTE} minutes"
+
+        self.logger.info("Settings lights to %s for %s.", color.lower(), color_time)
+
+        # Activate the solid animation for the selected color
         self.animations.activate(color)
 
     async def stop_animation(self):
@@ -173,8 +208,8 @@ class EventPoller:
     def __init__(self, base_url: str, timeout: int):
         self.base_url = base_url
         self.timeout = timeout
-        self.retry_delay = 1
-        self.logger = logging.getLogger(__name__)
+        self.retry_delay = INITIAL_RETRY_DELAY
+        self.logger = logging.getLogger(f"{__name__}.EventPoller")
 
     async def fetch_events(self):
         """
@@ -190,30 +225,50 @@ class EventPoller:
                     async with session.get(
                         url, timeout=aiohttp.ClientTimeout(total=self.timeout)
                     ) as response:
-                        self.logger.debug(f"Fetching events from {url}")
+                        self.logger.debug("Fetching events from %s", url)
                         if response.status == 200:
                             data = await response.json()
                             url = data["nextUrl"]
                             self.retry_delay = 1
                             yield data["events"]
                         else:
-                            self.logger.error(f"Failed to fetch events: {response.status}")
+                            self.logger.error(
+                                "Error fetching events: %s. Status: %s",
+                                url,
+                                response.status,
+                            )
                             await self.handle_error()
                 except KeyboardInterrupt:
                     self.logger.info("Keyboard interrupt received, stopping event poller.")
                     break
                 except aiohttp.ClientError as client_error:
-                    self.logger.error(f"Error during event fetching: {client_error}")
+                    self.logger.error(
+                        "Error fetching events from %s: %s",
+                        url,
+                        client_error.__class__.__name__,
+                    )
                     await self.handle_error()
 
     async def handle_error(self):
         """
-        Handle an error while fetching events.
+        Handle an error.
         """
+
+        # Wait for initial retry delay before retrying
+        self.logger.info("Waiting %s seconds before retrying.", self.retry_delay)
         await asyncio.sleep(self.retry_delay)
 
-        # Double the retry delay, up to a maximum of 60 seconds
-        self.retry_delay = min(self.retry_delay * 2, 60)
+        # Check if the maximum retry delay has been reached
+        if self.retry_delay == MAX_RETRY_DELAY:
+            self.logger.warning(
+                "Maximum retry delay of %s reached. Will not increase further.",
+                MAX_RETRY_DELAY,
+            )
+
+        else:
+            # Double the retry delay, up to a maximum of 60 seconds
+            self.retry_delay = min(self.retry_delay * RETRY_FACTOR, MAX_RETRY_DELAY)
+            self.logger.debug("Retry delay is now %s seconds.", self.retry_delay)
 
 
 class EventProcessor:
@@ -222,7 +277,7 @@ class EventProcessor:
     """
 
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(f"{__name__}.EventProcessor")
 
     async def process_events(self, events_gen, led_controller):
         """
@@ -296,48 +351,69 @@ async def main():
     """
     Main application entry point.
     """
+
+    # Setup logging
+    with open("logging_config.json", "r", encoding="utf-8") as f:
+        config = json.load(f)
+        logging.config.dictConfig(config)
+        logger = logging.getLogger(__name__)
+        logger = logging.getLogger(f"{__name__}.StripAlerts")
+
+    logger.debug("Beginning application setup.")
+
+    # Load environment variables
+    load_dotenv()
+
+    # Setup LED strip
     led_strip = neopixel.NeoPixel(
         LED_PIN, n=LED_COUNT, brightness=LED_BRIGHTNESS, auto_write=True  # type: ignore
     )
 
-    led_controller = LEDController(led_strip)
-
-    load_dotenv()
+    # Setup request parameters
     request_timeout = int(os.getenv("TIMEOUT", "10"))
-    api_username = os.getenv("USERNAME", "")
-    api_token = os.getenv("TOKEN", "")
-    api_timeout = int(request_timeout / 2)
-    base_url = (
-        f"https://events.testbed.cb.dev/events/{api_username}/{api_token}/?timeout={api_timeout}"
-    )
+    api_username = str(os.getenv("USERNAME", ""))
+    api_token = str(os.getenv("TOKEN", ""))
+    base_url_env = str(os.getenv("BASE_URL", "https://eventsapi.chaturbate.com/events/"))
+    api_timeout = int(request_timeout // TIMEOUT_BUFFER_FACTOR)
+    base_url = f"{base_url_env}{api_username}/{api_token}/?timeout={api_timeout}"
 
+    # Setup application objects using LED strip and request parameters
+    led_controller = LEDController(led_strip)
     poller = EventPoller(base_url, request_timeout)
     processor = EventProcessor()
 
+    # Create tasks to run concurrently
     animation_loop_task = asyncio.create_task(led_controller.animation_loop())
     process_events_task = asyncio.create_task(
         processor.process_events(poller.fetch_events(), led_controller)
     )
 
+    logger.debug("Application setup complete.")
+    logger.info("Starting application.")
+
+    # Run task loops and await completion (should never happen)
     try:
         await asyncio.gather(animation_loop_task, process_events_task)
 
-    except asyncio.CancelledError:
-        logger.info("Cancelling tasks.")
+    # Handle keyboard interrupt and shutdown gracefully
+    except KeyboardInterrupt:
+        logger.warning("KeyboardInterrupt received.")
+
+    # Stop the animation loop and tasks and await completion
     finally:
+        logger.debug("Stopping application...")
+        animation_loop_task.cancel()
+        process_events_task.cancel()
+        await asyncio.gather(animation_loop_task, process_events_task, return_exceptions=True)
         await led_controller.stop_animation()
+        logger.info("Application stopped.")
+
+        # Format the log file
+        align_logs("./app.log")
 
 
 if __name__ == "__main__":
-    # Configure logging
-    logging.basicConfig(
-        filename="app.log",
-        level=logging.DEBUG,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        filemode="w",
-    )
-
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Application stopped by user.")
+        pass
