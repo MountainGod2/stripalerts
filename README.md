@@ -1,54 +1,59 @@
-# Chaturbate Events API and LED Controller
 
-![291103405-1a407b61-1bd5-450e-8bc3-9ff1d251f24b](https://github.com/MountainGod2/stripalerts/assets/88257202/6237796c-c9ec-4da8-8411-5bb8e18e95e8)
+# StripAlerts - LED Alerts for Chaturbate Events
 
-This Python script utilizes the Chaturbate Events API to process tip events and controls an LED strip to provide visual alerts. When certain conditions are met, such as receiving a specific number of tokens, the LED strip displays different animations or colors.
+![StripAlerts](https://github.com/MountainGod2/stripalerts/assets/88257202/6237796c-c9ec-4da8-8411-5bb8e18e95e8)
 
-## Features
+Enhance your Chaturbate streaming experience with StripAlerts! This Python script integrates with the Chaturbate Events API to process tip events, controlling an LED strip to display visual alerts.
 
-- **Event Polling:** Continuously polls the Chaturbate Events API for new events.
-- **Tip Processing:** Detects tip events and activates LED animations based on the number of tokens.
-- **LED Control:** Manages an LED strip to display various animations and colors.
-- **Color Alerts:** Supports color-specific alerts based on user messages.
-- **Customizable Settings:** Includes settings for alert duration, LED brightness, and more.
+## Key Features
 
-## Requirements
+- **Event Polling:** Real-time polling of the Chaturbate Events API for the latest tip events.
+- **Dynamic Tip Processing:** Responds to tipping events with customizable LED animations.
+- **Advanced LED Control:** Manages LED strips for a variety of animations and colors.
+- **Color-Specific Alerts:** Set up alerts that react to specific user messages with designated colors.
+- **User-Friendly Customization:** Easy-to-configure settings for alert types, duration, LED brightness, and more.
 
-- Python 3.x
-- `aiohttp` for asynchronous HTTP requests
-- `neopixel` and `board` for LED control
-- `adafruit_led_animation` for LED animations
-- `dotenv` for environment variable management
+## Getting Started
 
-## Installation
+### Prerequisites
 
-1. Clone the repository:
+- Python 3.x: [Download Python](https://www.python.org/downloads/)
+- Libraries: `aiohttp`, `neopixel`, `board`, `adafruit_led_animation`, `dotenv`. Installation instructions are provided in the installation section.
+
+### Installation
+
+1. **Clone the Repository:** 
    ```bash
-   git clone https://github.com/your-username/your-repo-name.git
+   git clone https://github.com/MountainGod2/stripalerts.git
    ```
-
-2. Install the required packages:
+2. **Install Dependencies:**
+   Navigate to the cloned directory and run:
    ```bash
    pip install -r requirements.txt
    ```
 
-## Configuration
+### Configuration
 
-Create a `.env` file in the root directory and specify the following variables:
-- `TIMEOUT`: Request timeout for the API.
-- `USERNAME`: Your Chaturbate API username.
-- `TOKEN`: Your Chaturbate API token.
+- Create a `.env` file in the root directory.
+- Add the following variables:
+   ```
+   USERNAME=YourChaturbateAPIUsername
+   TOKEN=YourChaturbateAPIToken
+   ```
 
-## Usage
+## Customizing LED Settings
 
-Run the script using:
-```bash
-python main.py
-```
+Modify `LED_COUNT`, `LED_PIN` in `src/constants.py` to match your connected LED strip.
 
-## LED Settings
 
-Modify the `LED_COUNT`, `LED_PIN`, and `LED_BRIGHTNESS` variables in `main.py` to match your LED strip's specifications.
+### Usage
+
+1. Run the script:
+   ```bash
+   python main.py
+   ```
+2. Observe the LED strip responding to Chaturbate events.
+
 
 ## License
 
@@ -56,5 +61,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- Chaturbate Events API for providing the event data.
-- Adafruit for the LED animation library.
+- [Chaturbate Events API](https://chaturbate.com/) for providing the event data.
+- [Adafruit](https://www.adafruit.com/) for the fantastic LED animation library.
+- [ChatGPT](https://chat.openai.com/) for creating 90% of this program (README.md included), and for letting me cosplay as a python programmer.
