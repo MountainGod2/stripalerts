@@ -41,9 +41,9 @@ Enhance your Chaturbate streaming experience with StripAlerts! This Python scrip
    TOKEN=YourChaturbateAPIToken
    ```
 
-## Customizing LED Settings
+### Customizing LED Settings
 
-Modify `LED_COUNT`, `LED_PIN` in `src/constants.py` to match your connected LED strip.
+Modify `LED_COUNT` & `LED_PIN` in `src/constants.py` to match your connected LED strip. Other values such as the tip amount `ALERT_TOKENS`
 
 
 ### Usage

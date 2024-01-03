@@ -12,12 +12,12 @@ from constants import (
     ALERT_LENGTH,
     ANIMATION_SPEED,
     COLOR_ACTIVE_TIME,
-    ONE_MINUTE,
     PULSE_PERIOD,
     PULSE_SPEED,
     RAINBOW_PERIOD,
     RAINBOW_SPEED,
-    SPARKLE_BRIGHTNESS,
+    SECONDS_PER_MIN,
+    SPARKLE_BASE_BRIGHTNESS,
     SPARKLE_NUM_SPARKLES,
     SPARKLE_PERIOD,
     SPARKLE_SPEED,
@@ -58,7 +58,7 @@ class LEDController:
             speed=SPARKLE_SPEED,
             period=SPARKLE_PERIOD,
             num_sparkles=SPARKLE_NUM_SPARKLES,
-            background_brightness=SPARKLE_BRIGHTNESS,
+            background_brightness=SPARKLE_BASE_BRIGHTNESS,
             name="sparkle",
         )
         pulse_animations = [
@@ -121,8 +121,8 @@ class LEDController:
         await asyncio.sleep(ALERT_LENGTH)
         color_time = (
             f"{COLOR_ACTIVE_TIME} seconds"
-            if COLOR_ACTIVE_TIME < ONE_MINUTE
-            else f"{COLOR_ACTIVE_TIME // ONE_MINUTE} minutes"
+            if COLOR_ACTIVE_TIME < SECONDS_PER_MIN
+            else f"{COLOR_ACTIVE_TIME // SECONDS_PER_MIN} minutes"
         )
         self.logger.info(f"Setting lights to {color.name.lower()} for {color_time}.")
         self.animations.activate(color.name)

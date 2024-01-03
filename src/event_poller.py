@@ -4,6 +4,7 @@ import asyncio
 import logging
 
 import aiohttp
+import backoff
 
 from constants import INITIAL_RETRY_DELAY, MAX_RETRY_DELAY, RETRY_FACTOR
 
@@ -25,6 +26,7 @@ class EventPoller:
         self.retry_delay = INITIAL_RETRY_DELAY
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=5)
     async def fetch_events(self):
         """
         Fetch events from the Chaturbate Events API.

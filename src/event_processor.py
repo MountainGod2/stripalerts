@@ -2,7 +2,7 @@
 
 import logging
 
-from constants import ALERT_TOKENS
+from constants import COLOR_ALERT_TOKENS
 from event_types import EventType
 from led_controller import AlertColors
 
@@ -45,7 +45,7 @@ class EventProcessor:
         tokens = tip.get("tokens", 0)
         message = self.clean_message(tip.get("message", ""))
         color = AlertColors.from_string(message)
-        if tokens == ALERT_TOKENS and color:
+        if tokens == COLOR_ALERT_TOKENS and color:
             await led_controller.activate_color_alert(color)
         else:
             await led_controller.activate_normal_alert()
