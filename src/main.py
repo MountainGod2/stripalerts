@@ -12,11 +12,11 @@ import os
 import neopixel
 from dotenv import load_dotenv
 
-from constants import LED_BRIGHTNESS, LED_COUNT, LED_PIN, TIMEOUT_BUFFER_FACTOR
+from constants import API_TIMEOUT, LED_BRIGHTNESS, LED_COUNT, LED_PIN
 from event_poller import EventPoller
 from event_processor import EventProcessor
 from led_controller import LEDController
-from log_formatter import align_logs
+from log_formatter import LogFormatter
 
 
 # Configure logging
@@ -58,8 +58,7 @@ class AppConfig:
         self.api_username = os.getenv("USERNAME", "")
         self.api_token = os.getenv("TOKEN", "")
         self.base_url = os.getenv("BASE_URL", "https://eventsapi.chaturbate.com/events/")
-        self.request_timeout = int(os.getenv("TIMEOUT", "10"))
-        self.api_timeout = self.request_timeout // TIMEOUT_BUFFER_FACTOR
+        self.request_timeout = int(os.getenv("TIMEOUT", "30"))
         self.led_strip = self.setup_led_strip()
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -85,7 +84,7 @@ class AppConfig:
         Returns:
             str: Base URL for the Chaturbate Events API.
         """
-        return f"{self.base_url}{self.api_username}/{self.api_token}/?timeout={self.api_timeout}"
+        return f"{self.base_url}{self.api_username}/{self.api_token}/?timeout={API_TIMEOUT}"
 
 
 async def main():
@@ -112,6 +111,7 @@ async def main():
     processing_task = asyncio.create_task(
         processor.process_events(poller.fetch_events(), led_controller)
     )
+    log_formatter = LogFormatter(delete_original=True)
     logger.debug("Application setup complete.")
 
     # Run the application
@@ -125,8 +125,8 @@ async def main():
         processing_task.cancel()
         await asyncio.gather(animation_task, processing_task, return_exceptions=True)
         await led_controller.stop_animation()
-        align_logs(delete_original=True)
         logger.info("Application stopped.")
+        await log_formatter.align_logs()
 
 
 if __name__ == "__main__":
