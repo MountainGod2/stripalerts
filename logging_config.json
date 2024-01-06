@@ -3,6 +3,9 @@
     "formatters": {
         "standard": {
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        },
+        "simple": {
+            "format": "%(message)s"
         }
     },
     "handlers": {
@@ -11,12 +14,17 @@
             "formatter": "standard",
             "filename": "app.log",
             "mode": "w"
+        },
+        "consoleHandler": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple"
         }
     },
     "loggers": {
         "": {
             "handlers": [
-                "fileHandler"
+                "fileHandler",
+                "consoleHandler"
             ],
             "level": "INFO",
             "propagate": true

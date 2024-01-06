@@ -122,6 +122,8 @@ async def main():
         await asyncio.gather(animation_task, processing_task)
     except KeyboardInterrupt:
         logger.warning("Keyboard interrupt received. Stopping application.")
+    except Exception as error:
+        logger.exception(error)
     finally:
         animation_task.cancel()
         processing_task.cancel()
