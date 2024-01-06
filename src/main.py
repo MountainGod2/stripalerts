@@ -57,7 +57,9 @@ class AppConfig:
     def __init__(self):
         self.api_username = os.getenv("USERNAME", "")
         self.api_token = os.getenv("TOKEN", "")
-        self.base_url = os.getenv("BASE_URL", "https://eventsapi.chaturbate.com/events/")
+        self.base_url = os.getenv(
+            "BASE_URL", "https://eventsapi.chaturbate.com/events/"
+        )
         self.request_timeout = int(os.getenv("TIMEOUT", "30"))
         self.led_strip = self.setup_led_strip()
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -134,3 +136,5 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
+    except Exception as error:
+        logging.getLogger("StripAlerts").exception(error)
