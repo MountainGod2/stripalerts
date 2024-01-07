@@ -9,9 +9,9 @@ from adafruit_led_animation.sequence import AnimationSequence
 
 from alert_colors import AlertColors
 from constants import (
-    ALERT_LENGTH,
+    ALERT_DURATION,
     ANIMATION_SPEED,
-    COLOR_ACTIVE_TIME,
+    COLOR_DURATION,
     PULSE_PERIOD,
     PULSE_SPEED,
     RAINBOW_PERIOD,
@@ -91,7 +91,7 @@ class LEDController:
             if (
                 self.current_color
                 and self.color_set_time
-                and (time.time() - self.color_set_time > COLOR_ACTIVE_TIME)
+                and (time.time() - self.color_set_time > COLOR_DURATION)
             ):
                 self.current_color = None
                 self.logger.info("Color alert duration expired. Resetting to rainbow.")
@@ -104,7 +104,7 @@ class LEDController:
         previous_state = self.animations.current_animation.name
         self.logger.debug("Activating normal alert.")
         self.animations.activate("sparkle")
-        await asyncio.sleep(ALERT_LENGTH)
+        await asyncio.sleep(ALERT_DURATION)
         self.animations.activate(previous_state)
 
     async def activate_color_alert(self, color):
@@ -118,11 +118,11 @@ class LEDController:
         self.color_set_time = time.time()
         self.logger.debug(f"Activating color alert: {color.name.lower()}.")
         self.animations.activate(f"{color.name}_pulse")
-        await asyncio.sleep(ALERT_LENGTH)
+        await asyncio.sleep(ALERT_DURATION)
         color_time = (
-            f"{COLOR_ACTIVE_TIME} seconds"
-            if COLOR_ACTIVE_TIME < SECONDS_PER_MIN
-            else f"{COLOR_ACTIVE_TIME // SECONDS_PER_MIN} minutes"
+            f"{COLOR_DURATION} seconds"
+            if COLOR_DURATION < SECONDS_PER_MIN
+            else f"{COLOR_DURATION // SECONDS_PER_MIN} minutes"
         )
         self.logger.info(f"Setting lights to {color.name.lower()} for {color_time}.")
         self.animations.activate(color.name)

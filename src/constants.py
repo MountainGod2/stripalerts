@@ -5,9 +5,9 @@ import dotenv
 dotenv.load_dotenv()
 
 # LED parameters
-LED_PIN = os.getenv("LED_PIN")
-LED_COUNT = os.getenv("LED_COUNT")
-LED_BRIGHTNESS = os.getenv("LED_BRIGHTNESS")
+LED_PIN = str(os.getenv("LED_PIN", ""))
+LED_COUNT = int(os.getenv("LED_COUNT", "5"))
+LED_BRIGHTNESS = float(os.getenv("LED_BRIGHTNESS", "0.1"))
 
 
 # Alert parameters

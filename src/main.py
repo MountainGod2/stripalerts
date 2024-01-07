@@ -8,7 +8,8 @@ import json
 import logging
 import logging.config
 import os
-
+import signal
+import board
 import neopixel
 from dotenv import load_dotenv
 
@@ -61,7 +62,11 @@ class AppConfig:
             "BASE_URL", "https://eventsapi.chaturbate.com/events/"
         )
         self.request_timeout = int(os.getenv("TIMEOUT", "30"))
+        self.led_pin = str(os.getenv("LED_PIN", ""))
+        self.led_count = int(os.getenv("LED_COUNT", "5"))
+        self.led_brightness = float(os.getenv("LED_BRIGHTNESS", "0.1"))
         self.led_strip = self.setup_led_strip()
+
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def setup_led_strip(self):
@@ -71,12 +76,16 @@ class AppConfig:
         Returns:
             neopixel.NeoPixel: NeoPixel LED strip.
         """
+        pixel_pin = getattr(board, self.led_pin)
         try:
             return neopixel.NeoPixel(
-                LED_PIN, LED_COUNT, brightness=LED_BRIGHTNESS, auto_write=False  # type: ignore
+                pin=pixel_pin,
+                n=self.led_count,
+                auto_write=False,
+                brightness=self.led_brightness,
             )
-        except RuntimeError as error:
-            self.logger.error(f"Error initializing LED strip: {error}")
+        except Exception as error:
+            self.logger.exception(error)
             raise
 
     def get_base_url(self):
@@ -89,18 +98,26 @@ class AppConfig:
         return f"{self.base_url}{self.api_username}/{self.api_token}/?timeout={API_TIMEOUT}"
 
 
-async def main():
-    """Main function."""
+def signal_handler(loop, logger):
+    """Creates a signal handler for the asyncio loop."""
 
-    # Load environment variables and validate
+    def handler(signum, frame):
+        logger.info(
+            f"Received termination signal: {signal.Signals(signum).name}. Shutting down."
+        )
+        loop.stop()
+
+    return handler
+
+
+async def main():
+    # Setup logging and validate environment variables
+    setup_logging()
     load_dotenv()
     validate_env_vars()
 
-    # Setup logging
-    setup_logging()
-
     logger = logging.getLogger("StripAlerts")
-    logger.debug("Setting up application.")
+    logger.info("Starting application.")
 
     # Create instances of the main classes
     config = AppConfig()
@@ -113,30 +130,33 @@ async def main():
     processing_task = asyncio.create_task(
         processor.process_events(poller.fetch_events(), led_controller)
     )
-    log_formatter = LogFormatter(delete_original=True)
-    logger.debug("Application setup complete.")
 
-    # Run the application
     try:
-        logger.info("Starting application.")
         await asyncio.gather(animation_task, processing_task)
-    except KeyboardInterrupt:
-        logger.warning("Keyboard interrupt received. Stopping application.")
-    except Exception as error:
-        logger.exception(error)
+    except asyncio.CancelledError:
+        # Handle task cancellation here
+        logger.info("Tasks have been cancelled.")
     finally:
+        # Cleanup code
         animation_task.cancel()
         processing_task.cancel()
         await asyncio.gather(animation_task, processing_task, return_exceptions=True)
         await led_controller.stop_animation()
-        logger.info("Application stopped.")
-        await log_formatter.align_logs()
+        logger.info("Application cleanup complete.")
 
 
 if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    logger = logging.getLogger("StripAlerts")
+
+    # Setting up signal handlers
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, signal_handler(loop, logger))
+
     try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+        loop.run_until_complete(main())
     except Exception as error:
-        logging.getLogger("StripAlerts").exception(error)
+        logger.exception("An unexpected error occurred:", exc_info=error)
+    finally:
+        loop.close()
+        logger.info("Event loop closed.")

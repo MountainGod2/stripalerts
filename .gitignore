@@ -3,6 +3,7 @@ credentials.*
 config.ini
 output.txt
 .pylintrc
+.nicegui
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
