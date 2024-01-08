@@ -16,9 +16,7 @@ def get_ip() -> str:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.settimeout(0)
-            s.connect(
-                ("10.254.254.254", 1)
-            )  # This IP is unreachable, but packets are not sent
+            s.connect(("10.254.254.254", 1))  # This IP is unreachable, but packets are not sent
             return s.getsockname()[0]
     except socket.error:
         return "127.0.0.1"
@@ -63,9 +61,7 @@ class Validator:
         if url:
             try:
                 response = requests.get(url)
-                self.set_storage_item(
-                    "api_settings_validated", response.status_code == 200
-                )
+                self.set_storage_item("api_settings_validated", response.status_code == 200)
                 if response.status_code == 200:
                     formatter.extract_credentials()
             except requests.RequestException:
@@ -273,9 +269,9 @@ def create_finalize_setup_step(stepper, storage, validator, formatter):
 
 
 def create_control_card(storage):
-    with ui.card().bind_visibility_from(storage, "setup_complete").props(
-        "vertical"
-    ).style("max-width: 600px; margin: 0 auto;"):
+    with ui.card().bind_visibility_from(storage, "setup_complete").props("vertical").style(
+        "max-width: 600px; margin: 0 auto;"
+    ):
         ui.label().bind_text_from(
             storage, "username", backward=lambda username: f"Welcome, {username}!"
         ).style("margin: 0 auto;").tailwind.font_weight("bold")

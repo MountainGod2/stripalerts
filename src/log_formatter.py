@@ -74,16 +74,12 @@ class LogFormatter:
         max_name_length, max_level_length = await self.analyze_log_lines(lines)
 
         output_file = f"stripalerts_{datetime.now().strftime('%Y%m%d')}.log"
-        await self.write_aligned_logs(
-            lines, max_name_length, max_level_length, output_file
-        )
+        await self.write_aligned_logs(lines, max_name_length, max_level_length, output_file)
 
         if self.delete_original:
             self.delete_file(self.file_path)
 
-    async def write_aligned_logs(
-        self, lines, max_name_length, max_level_length, output_file
-    ):
+    async def write_aligned_logs(self, lines, max_name_length, max_level_length, output_file):
         """
         Writes the aligned log lines to a new file asynchronously.
 
