@@ -30,26 +30,39 @@ class CommandRunner:
 
     async def run_command(self, command: str) -> None:
         self.result.content = ""  # Reset the result content
+        process = None
+        try:
+            # Replace python3 with the actual path of Python executable
+            command = command.replace("python3", sys.executable)
 
-        # Replace python3 with the actual path of Python executable
-        command = command.replace("python3", sys.executable)
+            # Create a subprocess for the command execution
+            process = await asyncio.create_subprocess_exec(
+                *shlex.split(command, posix="win" not in platform.system().lower()),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+            )
+            # Read the output from the process and update the result
+            if process.stdout:
+                output = ""
+                while data := await process.stdout.read(BUFFER_SIZE):
+                    output += data.decode()
+                    self.result.content = (
+                        f"```\n{output}\n```"  # Update the markdown content
+                    )
 
-        # Create a subprocess for the command execution
-        process = await asyncio.create_subprocess_exec(
-            *shlex.split(command, posix="win" not in platform.system().lower()),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-            cwd=os.path.dirname(os.path.abspath(__file__)),
-        )
-
-        # Read the output from the process and update the result
-        if process.stdout:
-            output = ""
-            while data := await process.stdout.read(BUFFER_SIZE):
-                output += data.decode()
-                self.result.content = (
-                    f"```\n{output}\n```"  # Update the markdown content
-                )
+            # Wait for the process to finish
+            await process.wait()
+        except asyncio.CancelledError:
+            # Cancel the process if the task is cancelled
+            if process:
+                process.terminate()
+                await process.wait()
+            raise
+        except Exception as e:
+            # Display the exception
+            self.result.content = f"```\n{e}\n```"
+            raise
 
 
 class Validator:
