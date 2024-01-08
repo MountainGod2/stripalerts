@@ -16,7 +16,9 @@ def get_ip() -> str:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.settimeout(0)
-            s.connect(("10.254.254.254", 1))  # This IP is unreachable, but packets are not sent
+            s.connect(
+                ("10.254.254.254", 1)
+            )  # This IP is unreachable, but packets are not sent
             return s.getsockname()[0]
     except socket.error:
         return "127.0.0.1"
@@ -25,37 +27,28 @@ def get_ip() -> str:
 class CommandRunner:
     def __init__(self):
         self.result = ui.markdown()
+        self.process = None
 
-    async def run_command(self, command: str) -> None:
-        self.result.content = ""
-        process = None
-        try:
-            command = command.replace("python3", sys.executable)
-            process = await self.create_subprocess(command)
-            await self.read_process_output(process)
-            await process.wait()
-        except asyncio.CancelledError:
-            if process:
-                process.terminate()
-                await process.wait()
-            raise
-        except Exception as e:
-            self.result.content = f"```\n{e}\n```"
-            raise
+    async def start_main_script(self):
+        if self.process is None or self.process.returncode is not None:
+            self.process = await self.create_subprocess("sudo python3 src/main.py")
+            asyncio.create_task(self.read_process_output(self.process))
+
+    async def stop_main_script(self):
+        if self.process and self.process.returncode is None:
+            self.process.terminate()
+            await self.process.wait()
 
     async def create_subprocess(self, command: str):
         return await asyncio.create_subprocess_exec(
-            *shlex.split(command, posix="win" not in platform.system().lower()),
+            *shlex.split(command),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
-            cwd=os.path.dirname(os.path.abspath(__file__)),
         )
 
     async def read_process_output(self, process):
-        output = ""
         while data := await process.stdout.read(BUFFER_SIZE):
-            output += data.decode()
-            self.result.content = f"```\n{output}\n```"
+            self.result.content += data.decode()
 
 
 class Validator:
@@ -70,7 +63,9 @@ class Validator:
         if url:
             try:
                 response = requests.get(url)
-                self.set_storage_item("api_settings_validated", response.status_code == 200)
+                self.set_storage_item(
+                    "api_settings_validated", response.status_code == 200
+                )
                 if response.status_code == 200:
                     formatter.extract_credentials()
             except requests.RequestException:
@@ -278,24 +273,15 @@ def create_finalize_setup_step(stepper, storage, validator, formatter):
 
 
 def create_control_card(storage):
-    with ui.card().bind_visibility_from(storage, "setup_complete").props("vertical").style(
-        "max-width: 600px; margin: 0 auto;"
-    ):
-        runner = CommandRunner()
+    with ui.card().bind_visibility_from(storage, "setup_complete").props(
+        "vertical"
+    ).style("max-width: 600px; margin: 0 auto;"):
         ui.label().bind_text_from(
             storage, "username", backward=lambda username: f"Welcome, {username}!"
         ).style("margin: 0 auto;").tailwind.font_weight("bold")
-
-        ui.button(
-            "Start StripAlerts",
-            color="green",
-            on_click=lambda: asyncio.create_task(runner.run_command("sudo python3 src/main.py")),
-        ).style("margin: 0 auto;")
-        ui.button(
-            "Stop StripAlerts",
-            color="red",
-            on_click=lambda: asyncio.create_task(runner.run_command("sudo killall python3")),
-        ).style("margin: 0 auto;")
+        runner = CommandRunner()
+        ui.button("Start StripAlerts", on_click=runner.start_main_script)
+        ui.button("Stop StripAlerts", on_click=runner.stop_main_script)
         ui.button(
             "Return to setup",
             on_click=lambda: storage.__setitem__("setup_complete", False),

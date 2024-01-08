@@ -36,7 +36,7 @@ class LogFormatter:
         Returns:
             list: A list of log lines.
         """
-        self.logger.debug(f"Reading log lines from {self.file_path}...")
+        self.logger.debug(f"Reading logs from '{self.file_path}' and aligning them.")
         try:
             async with aiofiles.open(self.file_path, "r", encoding="utf-8") as file:
                 return await file.readlines()
@@ -67,7 +67,6 @@ class LogFormatter:
         """
         Aligns the log lines in the given file asynchronously.
         """
-        self.logger.debug(f"Aligning log lines in {self.file_path}...")
         lines = await self.read_logs()
         if not lines:
             return  # Don't proceed if there are no log lines.
@@ -75,13 +74,16 @@ class LogFormatter:
         max_name_length, max_level_length = await self.analyze_log_lines(lines)
 
         output_file = f"stripalerts_{datetime.now().strftime('%Y%m%d')}.log"
-        await self.write_aligned_logs(lines, max_name_length, max_level_length, output_file)
+        await self.write_aligned_logs(
+            lines, max_name_length, max_level_length, output_file
+        )
 
         if self.delete_original:
-            self.logger.debug(f"Deleting original file {self.file_path}...")
             self.delete_file(self.file_path)
 
-    async def write_aligned_logs(self, lines, max_name_length, max_level_length, output_file):
+    async def write_aligned_logs(
+        self, lines, max_name_length, max_level_length, output_file
+    ):
         """
         Writes the aligned log lines to a new file asynchronously.
 
@@ -98,9 +100,8 @@ class LogFormatter:
                     if len(parts) >= 4:
                         aligned_line = f"{parts[0]} - {parts[1]:<{max_name_length}} - {parts[2]:<{max_level_length}} - {parts[3]}"
                         await file.write(aligned_line)
-                self.logger.debug(f"Aligned log lines written to {output_file}")
         except IOError as e:
-            self.logger.error(f"Error writing to file {output_file}: {e}")
+            raise IOError(f"Error writing to file {output_file}: {e}")
 
     def delete_file(self, file_path):
         """
@@ -112,7 +113,7 @@ class LogFormatter:
         try:
             os.remove(file_path)
         except OSError as e:
-            self.logger.error(f"Error deleting file {file_path}: {e}")
+            raise OSError(f"Error deleting file {file_path}: {e}")
 
 
 if __name__ == "__main__":

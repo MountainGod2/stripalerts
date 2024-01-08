@@ -48,10 +48,12 @@ class EventPoller:
                             yield data["events"]
                         # If response status is any 5xx error
                         elif response.status >= 500:
-                            self.logger.error(f"Server error: Status {response.status}")
+                            self.logger.debug(f"Server error: Status {response.status}")
                             await self.handle_error(server_error=True)
                         else:
-                            self.logger.error(f"Error fetching events: Status {response.status}")
+                            self.logger.error(
+                                f"Error fetching events: Status {response.status}"
+                            )
                             await self.handle_error()
 
                 except aiohttp.ClientError as error:
@@ -64,5 +66,5 @@ class EventPoller:
             self.retry_delay = INITIAL_RETRY_DELAY
         else:
             self.retry_delay = min(self.retry_delay * RETRY_FACTOR, MAX_RETRY_DELAY)
-        self.logger.info(f"Waiting {self.retry_delay} seconds before retrying...")
+        self.logger.debug(f"Waiting {self.retry_delay} seconds before retrying...")
         await asyncio.sleep(self.retry_delay)

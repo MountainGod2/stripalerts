@@ -2,7 +2,6 @@
 This module demonstrates an example usage of the Chaturbate Events API to process tips
 and control LED animations based on the events.
 """
-
 import asyncio
 import json
 import logging
@@ -14,7 +13,7 @@ import board
 import neopixel
 from dotenv import load_dotenv
 
-from constants import API_TIMEOUT, LED_BRIGHTNESS, LED_COUNT, LED_PIN
+from constants import API_TIMEOUT
 from event_poller import EventPoller
 from event_processor import EventProcessor
 from led_controller import LEDController
@@ -23,22 +22,19 @@ from log_formatter import LogFormatter
 
 # Configure logging
 def setup_logging():
-    """Sets up logging based on the configuration file and .env log level."""
+    """
+    Setup logging configuration from JSON file.
+    """
     with open("logging_config.json", "r", encoding="utf-8") as config_file:
         config = json.load(config_file)
-
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    config["loggers"][""]["level"] = log_level
-
-    logging.config.dictConfig(config)
+        logging.config.dictConfig(config)
 
 
-# Validate environment variables
 def validate_env_vars():
-    """Validates that all required environment variables are set."""
     required_vars = ["USERNAME", "TOKEN"]
     missing_vars = [var for var in required_vars if not os.getenv(var)]
     if missing_vars:
+        logging.error("Missing environment variables: %s", missing_vars)
         raise ValueError(f"Missing environment variables: {', '.join(missing_vars)}")
 
 
@@ -59,7 +55,9 @@ class AppConfig:
     def __init__(self):
         self.api_username = os.getenv("USERNAME", "")
         self.api_token = os.getenv("TOKEN", "")
-        self.base_url = os.getenv("BASE_URL", "https://eventsapi.chaturbate.com/events/")
+        self.base_url = os.getenv(
+            "BASE_URL", "https://eventsapi.chaturbate.com/events/"
+        )
         self.request_timeout = int(os.getenv("TIMEOUT", "30"))
         self.led_pin = str(os.getenv("LED_PIN", ""))
         self.led_count = int(os.getenv("LED_COUNT", "5"))
@@ -97,63 +95,67 @@ class AppConfig:
         return f"{self.base_url}{self.api_username}/{self.api_token}/?timeout={API_TIMEOUT}"
 
 
-def signal_handler(loop, logger):
-    """Creates a signal handler for the asyncio loop."""
-
-    def handler(signum, frame):
-        logger.info(f"Received termination signal: {signal.Signals(signum).name}. Shutting down.")
-        loop.stop()
-
-    return handler
-
-
 async def main():
-    # Setup logging and validate environment variables
+    # Initialize logging
     setup_logging()
+    logger = logging.getLogger("StripAlerts")
+    logger.info("Starting StripAlerts.")
+    logger.debug("Logging initialized, beginning setup.")
+
+    # Load environment variables and validate required variables are set
+    logger.debug("Loading environment variables and validating.")
     load_dotenv()
     validate_env_vars()
 
-    logger = logging.getLogger("StripAlerts")
-    logger.info("Starting application.")
+    # Create a shutdown event for signal handling
+    shutdown_event = asyncio.Event()
 
-    # Create instances of the main classes
+    # Define a signal handler that sets the shutdown event
+    def signal_handler(sig, frame):
+        logger.debug(f"Signal {sig} received, initiating shutdown.")
+        shutdown_event.set()
+
+    # Register the signal handler for interrupt and termination signals
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, signal_handler)
+
+    # Create the application configuration
     config = AppConfig()
+    logger.debug("Application configuration created.")
+
+    # Create the LED controller, event poller, and event processor
     led_controller = LEDController(config.led_strip)
     poller = EventPoller(config.get_base_url(), config.request_timeout)
     processor = EventProcessor()
+    logger.debug("Application objects created, starting tasks.")
 
-    # Create tasks for the animation loop and event processing
+    # Create and start tasks for LED animation and event processing
     animation_task = asyncio.create_task(led_controller.run_animation_loop())
     processing_task = asyncio.create_task(
         processor.process_events(poller.fetch_events(), led_controller)
     )
 
-    try:
-        await asyncio.gather(animation_task, processing_task)
-    except asyncio.CancelledError:
-        # Handle task cancellation here
-        logger.info("Tasks have been cancelled.")
-    finally:
-        # Cleanup code
-        animation_task.cancel()
-        processing_task.cancel()
-        await asyncio.gather(animation_task, processing_task, return_exceptions=True)
-        await led_controller.stop_animation()
-        logger.info("Application cleanup complete.")
+    # Wait for the shutdown event to be set
+    await shutdown_event.wait()
+
+    # Shutdown event received, cancel and await tasks
+    logger.debug("Shutdown event received, cancelling tasks.")
+    animation_task.cancel()
+    processing_task.cancel()
+
+    # Wait for tasks to finish
+    logger.info("Stopping StripAlerts.")
+    await asyncio.gather(animation_task, processing_task, return_exceptions=True)
+
+    # Stop the LED animation and perform any necessary cleanup
+    await led_controller.stop_animation()
+    logger.debug("Cleanup complete, exiting.")
+
+    await LogFormatter("app.log", delete_original=True).align_logs()
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    logger = logging.getLogger("StripAlerts")
-
-    # Setting up signal handlers
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, signal_handler(loop, logger))
-
     try:
-        loop.run_until_complete(main())
-    except Exception as error:
-        logger.exception("An unexpected error occurred:", exc_info=error)
-    finally:
-        loop.close()
-        logger.info("Event loop closed.")
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit, asyncio.CancelledError):
+        pass

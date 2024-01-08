@@ -12,12 +12,14 @@
         "fileHandler": {
             "class": "logging.FileHandler",
             "formatter": "standard",
+            "level": "DEBUG",
             "filename": "app.log",
             "mode": "w"
         },
         "consoleHandler": {
             "class": "logging.StreamHandler",
-            "formatter": "simple"
+            "formatter": "simple",
+            "level": "INFO"
         }
     },
     "loggers": {
@@ -26,8 +28,7 @@
                 "fileHandler",
                 "consoleHandler"
             ],
-            "level": "INFO",
-            "propagate": true
+            "level": "DEBUG"
         }
     }
 }
