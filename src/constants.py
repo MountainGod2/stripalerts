@@ -1,5 +1,6 @@
 """Constants for the alert light program."""
 import os
+
 import dotenv
 
 dotenv.load_dotenv()
@@ -30,9 +31,7 @@ SPARKLE_BASE_BRIGHTNESS = 0.5  # Base brightness of sparkle animation
 
 # Pulse alert parameters (used for color alerts)
 PULSE_PERIOD = ALERT_DURATION * (2 // 3)  # Time in seconds to complete a pulse cycle
-PULSE_PERIOD = (
-    1 if PULSE_PERIOD < 1 else PULSE_PERIOD
-)  # Minimum pulse period is 1 second
+PULSE_PERIOD = 1 if PULSE_PERIOD < 1 else PULSE_PERIOD  # Minimum pulse period is 1 second
 PULSE_SPEED = 0.01  # Speed of pulse animation
 
 # Other parameters

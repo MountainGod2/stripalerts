@@ -2,10 +2,11 @@ import asyncio
 import os
 import platform
 import shlex
-import sys
-import requests
 import socket
+import sys
+
 import board
+import requests
 from nicegui import app, ui
 
 BUFFER_SIZE = 4096  # Buffer size for reading process output in bytes
@@ -15,9 +16,7 @@ def get_ip() -> str:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.settimeout(0)
-            s.connect(
-                ("10.254.254.254", 1)
-            )  # This IP is unreachable, but packets are not sent
+            s.connect(("10.254.254.254", 1))  # This IP is unreachable, but packets are not sent
             return s.getsockname()[0]
     except socket.error:
         return "127.0.0.1"
@@ -71,9 +70,7 @@ class Validator:
         if url:
             try:
                 response = requests.get(url)
-                self.set_storage_item(
-                    "api_settings_validated", response.status_code == 200
-                )
+                self.set_storage_item("api_settings_validated", response.status_code == 200)
                 if response.status_code == 200:
                     formatter.extract_credentials()
             except requests.RequestException:
@@ -281,9 +278,9 @@ def create_finalize_setup_step(stepper, storage, validator, formatter):
 
 
 def create_control_card(storage):
-    with ui.card().bind_visibility_from(storage, "setup_complete").props(
-        "vertical"
-    ).style("max-width: 600px; margin: 0 auto;"):
+    with ui.card().bind_visibility_from(storage, "setup_complete").props("vertical").style(
+        "max-width: 600px; margin: 0 auto;"
+    ):
         runner = CommandRunner()
         ui.label().bind_text_from(
             storage, "username", backward=lambda username: f"Welcome, {username}!"
@@ -292,16 +289,12 @@ def create_control_card(storage):
         ui.button(
             "Start StripAlerts",
             color="green",
-            on_click=lambda: asyncio.create_task(
-                runner.run_command("sudo python3 src/main.py")
-            ),
+            on_click=lambda: asyncio.create_task(runner.run_command("sudo python3 src/main.py")),
         ).style("margin: 0 auto;")
         ui.button(
             "Stop StripAlerts",
             color="red",
-            on_click=lambda: asyncio.create_task(
-                runner.run_command("sudo killall python3")
-            ),
+            on_click=lambda: asyncio.create_task(runner.run_command("sudo killall python3")),
         ).style("margin: 0 auto;")
         ui.button(
             "Return to setup",

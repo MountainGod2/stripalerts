@@ -9,6 +9,7 @@ import logging
 import logging.config
 import os
 import signal
+
 import board
 import neopixel
 from dotenv import load_dotenv
@@ -58,9 +59,7 @@ class AppConfig:
     def __init__(self):
         self.api_username = os.getenv("USERNAME", "")
         self.api_token = os.getenv("TOKEN", "")
-        self.base_url = os.getenv(
-            "BASE_URL", "https://eventsapi.chaturbate.com/events/"
-        )
+        self.base_url = os.getenv("BASE_URL", "https://eventsapi.chaturbate.com/events/")
         self.request_timeout = int(os.getenv("TIMEOUT", "30"))
         self.led_pin = str(os.getenv("LED_PIN", ""))
         self.led_count = int(os.getenv("LED_COUNT", "5"))
@@ -102,9 +101,7 @@ def signal_handler(loop, logger):
     """Creates a signal handler for the asyncio loop."""
 
     def handler(signum, frame):
-        logger.info(
-            f"Received termination signal: {signal.Signals(signum).name}. Shutting down."
-        )
+        logger.info(f"Received termination signal: {signal.Signals(signum).name}. Shutting down.")
         loop.stop()
 
     return handler
