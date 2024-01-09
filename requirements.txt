@@ -1,4 +1,0 @@
-aiohttp
-adafruit-circuitpython-neopixel
-adafruit-circuitpython-led-animation
-adafruit-blinka

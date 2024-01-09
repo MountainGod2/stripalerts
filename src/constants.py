@@ -1,63 +1,42 @@
-"""
-Constants and configuration parameters for the application.
+"""Constants for the alert light program."""
+import os
 
-This module contains constants and configuration parameters for the
-application. It also contains an enum of colors that can be used to
-represent colors in the application.
-"""
-from enum import Enum
+import dotenv
 
-import board
+dotenv.load_dotenv()
 
-# LED strip parameters
-LED_NUM_PIXELS = 4  # Number of pixels in the LED strip
-LED_PIXEL_PIN = board.D18  # Pin for the LED strip
-LED_PIXEL_BRIGHTNESS = 0.1  # Brightness of the pixels (0.0 to 1.0)
-
-# Logging parameters
-LOG_FILENAME = "stripalerts.log"  # Name of the log file
-LOG_LEVEL = "DEBUG"  # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-
-# LED animation parameters
-ANIMATION_LOOP_SPEED = 0.01  # Speed of the animation loop in seconds
-RAINBOW_SPEED = 0.01  # Speed of the rainbow animation in seconds
-RAINBOW_PERIOD = 60  # Period of the rainbow animation in seconds
-SPARKLE_SPEED = 0.02  # Speed of the sparkle animation in seconds
-SPARKLE_PERIOD = 1  # Period of the sparkle animation in seconds
-SPARKLE_NUM_SPARKLES = 50  # Number of sparkles in the sparkle animation
-PULSE_PERIOD = 1  # Period of the pulse animation in seconds
-PULSE_SPEED = 0.01  # Speed of the pulse animation in seconds
-
-# LED alert parameters
-COLOR_TIP_AMOUNT = 35  # Amount of tokens to tip for a color change
-ALERT_DURATION = 2.5  # Duration of the alert animation in seconds
-COLOR_TIMEOUT = 600  # Duration of the color change timeout in seconds
-BACKGROUND_ANIMATION = "rainbow"  # Animation to play in the background
-ALERT_ANIMATION = "sparkle"  # Animation to play during an alert
-
-# API parameters
-API_RESPONSE_TIMEOUT = 5  # Timeout for API requests in seconds
-
-# HTTP request parameters
-HTTP_REQUEST_TIMEOUT = 30  # Timeout for HTTP requests in seconds
-HTTP_MAX_RETRIES = 10  # Maximum number of HTTP request retries
-HTTP_BACKOFF_FACTOR = 2  # Factor for HTTP request retry delays
-HTTP_MAX_BACKOFF = 30  # Maximum delay between HTTP request retries in seconds
-HTTP_INITIAL_BACKOFF = 2  # Initial delay between HTTP request retries in seconds
+# LED parameters
+LED_PIN = str(os.getenv("LED_PIN", ""))
+LED_COUNT = int(os.getenv("LED_COUNT", "5"))
+LED_BRIGHTNESS = float(os.getenv("LED_BRIGHTNESS", "0.1"))
 
 
-class AlertColorList(Enum):
-    """Enum of colors
+# Alert parameters
+TOKENS_FOR_COLOR_ALERT = int(os.getenv("TOKENS_FOR_COLOR_ALERT", "35"))
+ALERT_DURATION = int(os.getenv("ALERT_DURATION", "60"))
+COLOR_DURATION = int(os.getenv("COLOR_DURATION", "600"))
 
-    Each color is represented as a tuple of three integers, corresponding to
-    the red, green, and blue values of the color. For example, the color
-    "red" is represented as (255, 0, 0)."""
+# Animation parameters
+ANIMATION_SPEED = 0.01  # Speed of animation loop
 
-    RED = (255, 0, 0)
-    ORANGE = (255, 165, 0)
-    YELLOW = (255, 255, 0)
-    GREEN = (0, 255, 0)
-    BLUE = (0, 0, 255)
-    INDIGO = (75, 0, 130)
-    VIOLET = (148, 0, 211)
-    BLACK = (0, 0, 0)
+# Rainbow animation parameters (run when no alerts or colors are active)
+RAINBOW_PERIOD = 60  # Time in seconds to complete a rainbow cycle
+RAINBOW_SPEED = 0.01  # Speed of rainbow animation
+
+# Sparkle alert parameters (used for normal alerts)
+SPARKLE_PERIOD = 60  # Time in seconds to complete a sparkle cycle
+SPARKLE_SPEED = 0.1  # Speed of sparkle animation
+SPARKLE_NUM_SPARKLES = 5  # Number of sparkles in sparkle animation
+SPARKLE_BASE_BRIGHTNESS = 0.5  # Base brightness of sparkle animation
+
+# Pulse alert parameters (used for color alerts)
+PULSE_PERIOD = ALERT_DURATION * (2 // 3)  # Time in seconds to complete a pulse cycle
+PULSE_PERIOD = 1 if PULSE_PERIOD < 1 else PULSE_PERIOD  # Minimum pulse period is 1 second
+PULSE_SPEED = 0.01  # Speed of pulse animation
+
+# Other parameters
+MAX_RETRY_DELAY = 60  # Maximum delay between retries in seconds
+RETRY_FACTOR = 2  # Factor by which to increase retry delay
+INITIAL_RETRY_DELAY = 5  # Initial delay between retries in seconds
+SECONDS_PER_MIN = 60  # Number of seconds in a minute
+API_TIMEOUT = 2  # Timeout for API requests in seconds

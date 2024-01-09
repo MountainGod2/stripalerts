@@ -1,0 +1,34 @@
+{
+    "version": 1,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        },
+        "simple": {
+            "format": "%(message)s"
+        }
+    },
+    "handlers": {
+        "fileHandler": {
+            "class": "logging.FileHandler",
+            "formatter": "standard",
+            "level": "DEBUG",
+            "filename": "app.log",
+            "mode": "w"
+        },
+        "consoleHandler": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "INFO"
+        }
+    },
+    "loggers": {
+        "": {
+            "handlers": [
+                "fileHandler",
+                "consoleHandler"
+            ],
+            "level": "DEBUG"
+        }
+    }
+}
