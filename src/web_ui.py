@@ -361,9 +361,7 @@ def create_control_card(storage):
         ui.button(
             "Return to setup",
             on_click=lambda: storage.set("setup_complete", False),
-        ).style(
-            "margin: 0 auto;"
-        ).props("flat")
+        ).style("margin: 0 auto;").props("flat")
 
 
 # Run the app with necessary configurations
