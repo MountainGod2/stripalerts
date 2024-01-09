@@ -1,6 +1,5 @@
 """
-This module demonstrates an example usage of the Chaturbate Events API to process tips
-and control LED animations based on the events.
+Main entry point for the application.
 """
 import asyncio
 import json
@@ -8,6 +7,7 @@ import logging
 import logging.config
 import os
 import signal
+from dataclasses import dataclass
 
 import board
 import neopixel
@@ -20,64 +20,75 @@ from led_controller import LEDController
 from log_formatter import LogFormatter
 
 
-# Configure logging
-def setup_logging():
+@dataclass
+class APIConfig:
     """
-    Setup logging configuration from JSON file.
+    Class to hold API configuration.
+
+    Attributes:
+        username (str): Chaturbate username.
+        token (str): Chaturbate API token.
+        base_url (str): Base URL for the API.
+        request_timeout (int): Timeout for API requests.
     """
-    with open("logging_config.json", "r", encoding="utf-8") as config_file:
-        config = json.load(config_file)
-        logging.config.dictConfig(config)
+
+    username: str = os.getenv("USERNAME", "")
+    token: str = os.getenv("TOKEN", "")
+    base_url: str = os.getenv("BASE_URL", "https://eventsapi.chaturbate.com/events/")
+    request_timeout: int = int(os.getenv("TIMEOUT", "30"))
 
 
-def validate_env_vars():
-    required_vars = ["USERNAME", "TOKEN"]
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-    if missing_vars:
-        logging.error("Missing environment variables: %s", missing_vars)
-        raise ValueError(f"Missing environment variables: {', '.join(missing_vars)}")
+@dataclass
+class LEDConfig:
+    """
+    Class to hold LED configuration.
+
+    Attributes:
+        pin (str): GPIO pin for the LED strip.
+        count (int): Number of LEDs in the strip.
+        brightness (float): Brightness of the LEDs.
+    """
+
+    pin: str = str(os.getenv("LED_PIN", "D18"))
+    count: int = int(os.getenv("LED_COUNT", "5"))
+    brightness: float = float(os.getenv("LED_BRIGHTNESS", "0.1"))
 
 
 class AppConfig:
     """
-    Class to store application configuration.
+    Application configuration.
 
     Attributes:
-        api_username (str): Chaturbate API username.
-        api_token (str): Chaturbate API token.
-        base_url (str): Base URL for the Chaturbate Events API.
-        request_timeout (int): Timeout for HTTP requests in seconds.
-        api_timeout (int): Timeout for Chaturbate Events API in seconds.
-        led_strip (neopixel.NeoPixel): NeoPixel LED strip.
+        api_config (APIConfig): API configuration.
+        led_config (LEDConfig): LED configuration.
         logger (logging.Logger): Logger instance.
+        pixel_pin (board.DigitalInOut): GPIO pin for the LED strip.
     """
 
     def __init__(self):
-        self.api_username = os.getenv("USERNAME", "")
-        self.api_token = os.getenv("TOKEN", "")
-        self.base_url = os.getenv("BASE_URL", "https://eventsapi.chaturbate.com/events/")
-        self.request_timeout = int(os.getenv("TIMEOUT", "30"))
-        self.led_pin = str(os.getenv("LED_PIN", ""))
-        self.led_count = int(os.getenv("LED_COUNT", "5"))
-        self.led_brightness = float(os.getenv("LED_BRIGHTNESS", "0.1"))
-        self.led_strip = self.setup_led_strip()
-
+        self.api_config = APIConfig()
+        self.led_config = LEDConfig()
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.pixel_pin = getattr(board, self.led_config.pin)
 
-    def setup_led_strip(self):
+    def setup_led_strip(
+        self,
+    ):
         """
         Setup the NeoPixel LED strip.
 
+        Args:
+            led_config (LEDConfig): Configuration for the LED strip.
+
         Returns:
-            neopixel.NeoPixel: NeoPixel LED strip.
+            neopixel.NeoPixel: The configured NeoPixel LED strip.
         """
-        pixel_pin = getattr(board, self.led_pin)
         try:
             return neopixel.NeoPixel(
-                pin=pixel_pin,
-                n=self.led_count,
+                pin=self.pixel_pin,
+                n=self.led_config.count,
                 auto_write=False,
-                brightness=self.led_brightness,
+                brightness=self.led_config.brightness,
             )
         except Exception as error:
             self.logger.exception(error)
@@ -85,31 +96,56 @@ class AppConfig:
 
     def get_base_url(self):
         """
-        Get the base URL for the Chaturbate Events API.
+        Get the base URL for the API.
 
         Returns:
-            str: Base URL for the Chaturbate Events API.
+            str: Base URL for the API.
         """
-        return f"{self.base_url}{self.api_username}/{self.api_token}/?timeout={API_TIMEOUT}"
+        return f"{self.api_config.base_url}{self.api_config.username}/{self.api_config.token}/?timeout={API_TIMEOUT}"
+
+
+def setup_logging():
+    """Setup logging configuration from JSON file."""
+    with open("logging_config.json", "r", encoding="utf-8") as config_file:
+        config = json.load(config_file)
+        logging.config.dictConfig(config)
+
+
+def validate_env_vars():
+    """Validate that all required environment variables are set."""
+    required_vars = ["USERNAME", "TOKEN"]
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    if missing_vars:
+        logging.error("Missing environment variables: %s", missing_vars)
+        raise ValueError(f"Missing environment variables: {', '.join(missing_vars)}")
 
 
 async def main():
+    """Main entry point for the application."""
+
     # Initialize logging
     setup_logging()
     logger = logging.getLogger("StripAlerts")
     logger.info("Starting StripAlerts.")
-    logger.debug("Logging initialized, beginning setup.")
 
     # Load environment variables and validate required variables are set
     logger.debug("Loading environment variables and validating.")
     load_dotenv()
     validate_env_vars()
 
+    # Create the application configuration
+    app_config = AppConfig()
+    logger.debug("Application configuration created.")
+
+    # Setup the LED strip
+    logger.debug("Setting up LED strip.")
+    led_strip = app_config.setup_led_strip()
+
     # Create a shutdown event for signal handling
     shutdown_event = asyncio.Event()
 
     # Define a signal handler that sets the shutdown event
-    def signal_handler(sig, frame):
+    def signal_handler(sig, _):
         logger.debug(f"Signal {sig} received, initiating shutdown.")
         shutdown_event.set()
 
@@ -117,13 +153,9 @@ async def main():
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, signal_handler)
 
-    # Create the application configuration
-    config = AppConfig()
-    logger.debug("Application configuration created.")
-
     # Create the LED controller, event poller, and event processor
-    led_controller = LEDController(config.led_strip)
-    poller = EventPoller(config.get_base_url(), config.request_timeout)
+    led_controller = LEDController(led_strip)
+    poller = EventPoller(app_config.get_base_url(), app_config.api_config.request_timeout)
     processor = EventProcessor()
     logger.debug("Application objects created, starting tasks.")
 

@@ -1,9 +1,12 @@
+"""
+This module contains the web UI for the StripAlerts setup.
+
+The web UI is built using the NiceGUI library.
+"""
 import asyncio
-import os
 import platform
 import shlex
 import socket
-import sys
 
 import board
 import requests
@@ -13,6 +16,12 @@ BUFFER_SIZE = 4096  # Buffer size for reading process output in bytes
 
 
 def get_ip() -> str:
+    """
+    Returns the IP address of the device.
+
+    Returns:
+        str: IP address of the device.
+    """
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.settimeout(0)
@@ -23,21 +32,32 @@ def get_ip() -> str:
 
 
 class CommandRunner:
+    """
+    Class to run commands asynchronously.
+
+    Attributes:
+        result (ui.markdown): Markdown component to display the process output.
+        process (asyncio.subprocess.Process): Process instance.
+    """
+
     def __init__(self):
         self.result = ui.markdown()
         self.process = None
 
     async def start_main_script(self):
+        """Starts the main script asynchronously."""
         if self.process is None or self.process.returncode is not None:
             self.process = await self.create_subprocess("sudo python3 src/main.py")
             asyncio.create_task(self.read_process_output(self.process))
 
     async def stop_main_script(self):
+        """Stops the main script asynchronously."""
         if self.process and self.process.returncode is None:
             self.process.terminate()
             await self.process.wait()
 
     async def create_subprocess(self, command: str):
+        """Creates a subprocess asynchronously."""
         return await asyncio.create_subprocess_exec(
             *shlex.split(command),
             stdout=asyncio.subprocess.PIPE,
@@ -45,22 +65,43 @@ class CommandRunner:
         )
 
     async def read_process_output(self, process):
+        """Reads the process output asynchronously."""
         while data := await process.stdout.read(BUFFER_SIZE):
             self.result.content += data.decode()
 
 
 class Validator:
+    """
+    Class to validate the setup settings.
+
+    Attributes:
+        storage (dict): Storage instance.
+    """
+
     def __init__(self, storage):
         self.storage = storage
 
     def set_storage_item(self, key: str, value: bool) -> None:
+        """
+        Sets a storage item.
+
+        Args:
+            key (str): Key of the item to set.
+            value (bool): Value to set.
+        """
         self.storage[key] = value
 
     def validate_api_settings(self, formatter) -> None:
+        """
+        Validates the API settings.
+
+        Args:
+            formatter (Formatter): Formatter instance.
+        """
         url = self.storage.get("token_url")
         if url:
             try:
-                response = requests.get(url)
+                response = requests.get(url, timeout=5)
                 self.set_storage_item("api_settings_validated", response.status_code == 200)
                 if response.status_code == 200:
                     formatter.extract_credentials()
@@ -70,12 +111,14 @@ class Validator:
             self.set_storage_item("api_settings_validated", False)
 
     def validate_led_settings(self) -> None:
+        """Validates the LED settings."""
         pin, count = self.storage.get("led_pin"), self.storage.get("led_count")
         is_pin_valid = pin in board.__dict__
         is_count_valid = count.isdigit() if count else False
         self.set_storage_item("led_settings_validated", is_pin_valid and is_count_valid)
 
     def validate_alert_settings(self) -> None:
+        """Validates the alert settings."""
         color_alert_tokens, color_duration, alert_duration = (
             self.storage.get("color_alert_tokens"),
             self.storage.get("color_duration"),
@@ -90,11 +133,26 @@ class Validator:
         )
 
     def verify_settings(self, stepper, setting_key: str, success_message: str) -> None:
+        """
+        Verifies the settings.
+
+        Args:
+            stepper (ui.stepper): Stepper instance.
+            setting_key (str): Key of the setting to verify.
+            success_message (str): Success message to display.
+        """
         if self.storage.get(setting_key):
             stepper.next()
             ui.notify(success_message, type="positive")
 
     def verify_setup_is_complete(self, stepper, formatter) -> None:
+        """
+        Verifies that the setup is complete.
+
+        Args:
+            stepper (ui.stepper): Stepper instance.
+            formatter (Formatter): Formatter instance.
+        """
         if self.storage.get("api_settings_validated") and self.storage.get(
             "led_settings_validated"
         ):
@@ -107,10 +165,18 @@ class Validator:
 
 
 class Formatter:
+    """
+    Class to format the setup settings.
+
+    Attributes:
+        storage (dict): Storage instance.
+    """
+
     def __init__(self, storage):
         self.storage = storage
 
     def extract_credentials(self):
+        """Extracts the credentials from the token URL."""
         url = self.storage.get("token_url")
         parts = url.split("/")
         username, token = parts[4], parts[5]
@@ -121,11 +187,12 @@ class Formatter:
             "token": token,
             "base_url": base_url,
         }.items():
-            self.storage.__setitem__(key, value)
+            self.storage[key] = value
 
     def write_credentials_to_env(self):
+        """Writes the credentials to the .env file."""
         env_file_path = ".env"
-        with open(env_file_path, "w") as env_file:
+        with open(env_file_path, "w", encoding="utf-8") as env_file:
             for key in [
                 "username",
                 "token",
@@ -142,6 +209,12 @@ class Formatter:
 
 
 def initialize_storage(storage):
+    """
+    Initializes the storage.
+
+    Args:
+        storage (dict): Storage instance.
+    """
     default_values = {
         "setup_complete": False,
         "api_settings_validated": False,
@@ -156,6 +229,7 @@ def initialize_storage(storage):
 
 @ui.page("/")
 def index():
+    """Creates the web UI."""
     storage = app.storage.user
     initialize_storage(storage)
 
@@ -167,6 +241,7 @@ def index():
 
 
 def create_setup_stepper(storage, validator, formatter):
+    """Creates the stepper."""
     with ui.stepper().props("vertical").style(
         "max-width: 600px; margin: 0 auto;"
     ).bind_visibility_from(
@@ -175,11 +250,12 @@ def create_setup_stepper(storage, validator, formatter):
         create_api_credentials_step(stepper, storage, validator, formatter)
         create_led_setup_step(stepper, storage, validator)
         create_alert_settings_step(stepper, storage, validator)
-        create_finalize_setup_step(stepper, storage, validator, formatter)
+        create_finalize_setup_step(stepper, validator, formatter)
     return stepper
 
 
 def create_api_credentials_step(stepper, storage, validator, formatter):
+    """Creates the API credentials step."""
     with ui.step("Set API credentials"):
         ui.input(
             "Token URL",
@@ -201,6 +277,7 @@ def create_api_credentials_step(stepper, storage, validator, formatter):
 
 
 def create_led_setup_step(stepper, storage, validator):
+    """Creates the LED setup step."""
     with ui.step("Setup LED strip"):
         ui.input(
             "LED Pin",
@@ -226,10 +303,11 @@ def create_led_setup_step(stepper, storage, validator):
                 stepper, "led_settings_validated", "LED settings validated!"
             ),
         ).bind_enabled_from(storage, "led_settings_validated")
-        ui.button("Back", on_click=lambda: stepper.previous()).props("flat")
+        ui.button("Back", on_click=stepper.previous()).props("flat")
 
 
 def create_alert_settings_step(stepper, storage, validator):
+    """Creates the alert settings step."""
     with ui.step("Set up alert settings"):
         ui.input(
             "Color Alert Tokens",
@@ -256,19 +334,21 @@ def create_alert_settings_step(stepper, storage, validator):
                 stepper, "alert_settings_validated", "Alert settings validated!"
             ),
         ).bind_enabled_from(storage, "alert_settings_validated")
-        ui.button("Back", on_click=lambda: stepper.previous()).props("flat")
+        ui.button("Back", on_click=stepper.previous()).props("flat")
 
 
-def create_finalize_setup_step(stepper, storage, validator, formatter):
+def create_finalize_setup_step(stepper, validator, formatter):
+    """Creates the finalize setup step."""
     with ui.step("Finalize setup"):
         ui.button(
             "Finish",
             on_click=lambda: validator.verify_setup_is_complete(stepper, formatter),
         )
-        ui.button("Back", on_click=lambda: stepper.previous()).props("flat")
+        ui.button("Back", on_click=stepper.previous()).props("flat")
 
 
 def create_control_card(storage):
+    """Creates the control card."""
     with ui.card().bind_visibility_from(storage, "setup_complete").props("vertical").style(
         "max-width: 600px; margin: 0 auto;"
     ):
@@ -280,8 +360,10 @@ def create_control_card(storage):
         ui.button("Stop StripAlerts", on_click=runner.stop_main_script)
         ui.button(
             "Return to setup",
-            on_click=lambda: storage.__setitem__("setup_complete", False),
-        ).style("margin: 0 auto;").props("flat")
+            on_click=lambda: storage.set("setup_complete", False),
+        ).style(
+            "margin: 0 auto;"
+        ).props("flat")
 
 
 # Run the app with necessary configurations

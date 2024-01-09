@@ -97,7 +97,7 @@ class LogFormatter:
                         aligned_line = f"{parts[0]} - {parts[1]:<{max_name_length}} - {parts[2]:<{max_level_length}} - {parts[3]}"
                         await file.write(aligned_line)
         except IOError as e:
-            raise IOError(f"Error writing to file {output_file}: {e}")
+            raise IOError(f"Error writing to file {output_file}: {e}") from e
 
     def delete_file(self, file_path):
         """
@@ -109,7 +109,7 @@ class LogFormatter:
         try:
             os.remove(file_path)
         except OSError as e:
-            raise OSError(f"Error deleting file {file_path}: {e}")
+            raise OSError(f"Error deleting file {file_path}: {e}") from e
 
 
 if __name__ == "__main__":
