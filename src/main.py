@@ -14,10 +14,10 @@ import neopixel
 from dotenv import load_dotenv
 
 from constants import API_TIMEOUT
+from event_handler import EventHandler
 from event_poller import EventPoller
-from event_processor import EventProcessor
 from led_controller import LEDController
-from log_formatter import LogFormatter
+from log_formatter import LogAligner
 
 
 @dataclass
@@ -71,11 +71,11 @@ class AppConfig:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.pixel_pin = getattr(board, self.led_config.pin)
 
-    def setup_led_strip(
+    def initialize_led_strip(
         self,
     ):
         """
-        Setup the NeoPixel LED strip.
+        Initialize the NeoPixel LED strip.
 
         Args:
             led_config (LEDConfig): Configuration for the LED strip.
@@ -139,7 +139,7 @@ async def main():
 
     # Setup the LED strip
     logger.debug("Setting up LED strip.")
-    led_strip = app_config.setup_led_strip()
+    led_strip = app_config.initialize_led_strip()
 
     # Create a shutdown event for signal handling
     shutdown_event = asyncio.Event()
@@ -156,13 +156,13 @@ async def main():
     # Create the LED controller, event poller, and event processor
     led_controller = LEDController(led_strip)
     poller = EventPoller(app_config.get_base_url(), app_config.api_config.request_timeout)
-    processor = EventProcessor()
+    processor = EventHandler()
     logger.debug("Application objects created, starting tasks.")
 
     # Create and start tasks for LED animation and event processing
     animation_task = asyncio.create_task(led_controller.run_animation_loop())
     processing_task = asyncio.create_task(
-        processor.process_events(poller.fetch_events(), led_controller)
+        processor.process_events(poller.poll_events(), led_controller)
     )
 
     # Wait for the shutdown event to be set
@@ -181,7 +181,7 @@ async def main():
     await led_controller.stop_animation()
     logger.debug("Cleanup complete, exiting.")
 
-    await LogFormatter("app.log", delete_original=True).align_logs()
+    await LogAligner("app.log", delete_original=True).align_log_entries()
 
 
 if __name__ == "__main__":

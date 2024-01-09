@@ -14,7 +14,7 @@ import aiofiles
 logging.basicConfig(level=logging.INFO)
 
 
-class LogFormatter:
+class LogAligner:
     """
     Class to align log lines in a log file.
 
@@ -63,7 +63,7 @@ class LogFormatter:
                 max_level_length = max(max_level_length, len(parts[2]))
         return max_name_length, max_level_length
 
-    async def align_logs(self):
+    async def align_log_entries(self):
         """
         Aligns the log lines in the given file asynchronously.
         """
@@ -114,5 +114,5 @@ class LogFormatter:
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(LogFormatter("app.log").align_logs())
+    loop.run_until_complete(LogAligner("app.log").align_log_entries())
     loop.close()

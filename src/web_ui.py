@@ -208,6 +208,148 @@ class Formatter:
                 env_file.write(f"{key.upper()}={value}\n")
 
 
+class SetupElements:
+    """
+    Class to setup the web UI elements.
+
+    Attributes:
+        storage (dict): Storage instance.
+        validator (Validator): Validator instance.
+        formatter (Formatter): Formatter instance.
+    """
+
+    def __init__(self, storage, validator, formatter):
+        self.storage = storage
+        self.validator = validator
+        self.formatter = formatter
+
+    # Create the stepper
+    def create_stepper(self):
+        """Creates the stepper."""
+        with ui.stepper().props("vertical").style(
+            "max-width: 600px; margin: 0 auto;"
+        ).bind_visibility_from(
+            self.storage, "setup_complete", backward=lambda complete: not complete
+        ) as stepper:
+            self._create_api_credentials_step(stepper)
+            self._create_led_setup_step(stepper)
+            self._create_alert_settings_step(stepper)
+            self._create_finalize_setup_step(stepper)
+        return stepper
+
+    # Stepper step #1
+    def _create_api_credentials_step(self, stepper):
+        """Creates the API credentials step."""
+        with ui.step("Set API credentials"):
+            ui.input(
+                "Token URL",
+                placeholder="https://events.testbed.cb.dev/events/username/token/",
+                on_change=lambda: self.validator.validate_api_settings(self.formatter),
+                validation={
+                    "Invalid URL": lambda value: value.startswith(
+                        "https://events.testbed.cb.dev/events/"
+                    )
+                },
+            ).bind_value_to(self.storage, "token_url")
+
+            ui.button(
+                "Next",
+                on_click=lambda: self.validator.verify_settings(
+                    stepper, "api_settings_validated", "API settings validated!"
+                ),
+            ).bind_enabled_from(self.storage, "api_settings_validated")
+
+    # Stepper step #2
+    def _create_led_setup_step(self, stepper):
+        """Creates the LED setup step."""
+        with ui.step("Setup LED strip"):
+            ui.input(
+                "LED Pin",
+                placeholder="D18",
+                value="D18",
+                on_change=self.validator.validate_led_settings,
+            ).bind_value_to(self.storage, "led_pin")
+            ui.input(
+                "LED Count",
+                placeholder="30",
+                value="100",
+                on_change=self.validator.validate_led_settings,
+            ).bind_value_to(self.storage, "led_count")
+
+            slider = ui.slider(min=0.1, max=1.0, value=0.1, step=0.1).bind_value_to(
+                self.storage, "led_brightness"
+            )
+            ui.label().bind_text_from(slider, "value")
+
+            ui.button(
+                "Next",
+                on_click=lambda: self.validator.verify_settings(
+                    stepper, "led_settings_validated", "LED settings validated!"
+                ),
+            ).bind_enabled_from(self.storage, "led_settings_validated")
+            ui.button("Back", on_click=stepper.previous()).props("flat")
+
+    # Stepper step #3
+    def _create_alert_settings_step(self, stepper):
+        """Creates the alert settings step."""
+        with ui.step("Set up alert settings"):
+            ui.input(
+                "Color Alert Tokens",
+                placeholder="35",
+                value="35",
+                on_change=self.validator.validate_alert_settings,
+            ).bind_value_to(self.storage, "color_alert_tokens")
+            ui.input(
+                "Color Duration",
+                placeholder="600",
+                value="600",
+                on_change=self.validator.validate_alert_settings,
+            ).bind_value_to(self.storage, "color_duration")
+            ui.input(
+                "Alert Duration",
+                placeholder="3",
+                value="3",
+                on_change=self.validator.validate_alert_settings,
+            ).bind_value_to(self.storage, "alert_duration")
+
+            ui.button(
+                "Next",
+                on_click=lambda: self.validator.verify_settings(
+                    stepper, "alert_settings_validated", "Alert settings validated!"
+                ),
+            ).bind_enabled_from(self.storage, "alert_settings_validated")
+            ui.button("Back", on_click=stepper.previous()).props("flat")
+
+    # Stepper step #4
+    def _create_finalize_setup_step(self, stepper):
+        """Creates the finalize setup step."""
+        with ui.step("Finalize setup"):
+            ui.button(
+                "Finish",
+                on_click=lambda: self.validator.verify_setup_is_complete(stepper, self.formatter),
+            )
+            ui.button("Back", on_click=stepper.previous()).props("flat")
+
+    # Create the control card
+    def create_control_card(self):
+        """Creates the control card."""
+        with ui.card().bind_visibility_from(self.storage, "setup_complete").props("vertical").style(
+            "max-width: 600px; margin: 0 auto;"
+        ):
+            ui.label().bind_text_from(
+                self.storage,
+                "username",
+                backward=lambda username: f"Welcome, {username}!",
+            ).style("margin: 0 auto;").tailwind.font_weight("bold")
+            runner = CommandRunner()
+            ui.button("Start StripAlerts", on_click=runner.start_main_script)
+            ui.button("Stop StripAlerts", on_click=runner.stop_main_script)
+            ui.button(
+                "Return to setup",
+                on_click=lambda: self.storage.set("setup_complete", False),
+            ).style("margin: 0 auto;").props("flat")
+
+
 def initialize_storage(storage):
     """
     Initializes the storage.
@@ -236,132 +378,9 @@ def index():
     validator = Validator(storage)
     formatter = Formatter(storage)
 
-    create_setup_stepper(storage, validator, formatter)
-    create_control_card(storage)
-
-
-def create_setup_stepper(storage, validator, formatter):
-    """Creates the stepper."""
-    with ui.stepper().props("vertical").style(
-        "max-width: 600px; margin: 0 auto;"
-    ).bind_visibility_from(
-        storage, "setup_complete", backward=lambda complete: not complete
-    ) as stepper:
-        create_api_credentials_step(stepper, storage, validator, formatter)
-        create_led_setup_step(stepper, storage, validator)
-        create_alert_settings_step(stepper, storage, validator)
-        create_finalize_setup_step(stepper, validator, formatter)
-    return stepper
-
-
-def create_api_credentials_step(stepper, storage, validator, formatter):
-    """Creates the API credentials step."""
-    with ui.step("Set API credentials"):
-        ui.input(
-            "Token URL",
-            placeholder="https://events.testbed.cb.dev/events/username/token/",
-            on_change=lambda: validator.validate_api_settings(formatter),
-            validation={
-                "Invalid URL": lambda value: value.startswith(
-                    "https://events.testbed.cb.dev/events/"
-                )
-            },
-        ).bind_value_to(storage, "token_url")
-
-        ui.button(
-            "Next",
-            on_click=lambda: validator.verify_settings(
-                stepper, "api_settings_validated", "API settings validated!"
-            ),
-        ).bind_enabled_from(storage, "api_settings_validated")
-
-
-def create_led_setup_step(stepper, storage, validator):
-    """Creates the LED setup step."""
-    with ui.step("Setup LED strip"):
-        ui.input(
-            "LED Pin",
-            placeholder="D18",
-            value="D18",
-            on_change=validator.validate_led_settings,
-        ).bind_value_to(storage, "led_pin")
-        ui.input(
-            "LED Count",
-            placeholder="30",
-            value="100",
-            on_change=validator.validate_led_settings,
-        ).bind_value_to(storage, "led_count")
-
-        slider = ui.slider(min=0.1, max=1.0, value=0.1, step=0.1).bind_value_to(
-            storage, "led_brightness"
-        )
-        ui.label().bind_text_from(slider, "value")
-
-        ui.button(
-            "Next",
-            on_click=lambda: validator.verify_settings(
-                stepper, "led_settings_validated", "LED settings validated!"
-            ),
-        ).bind_enabled_from(storage, "led_settings_validated")
-        ui.button("Back", on_click=stepper.previous()).props("flat")
-
-
-def create_alert_settings_step(stepper, storage, validator):
-    """Creates the alert settings step."""
-    with ui.step("Set up alert settings"):
-        ui.input(
-            "Color Alert Tokens",
-            placeholder="35",
-            value="35",
-            on_change=validator.validate_alert_settings,
-        ).bind_value_to(storage, "color_alert_tokens")
-        ui.input(
-            "Color Duration",
-            placeholder="600",
-            value="600",
-            on_change=validator.validate_alert_settings,
-        ).bind_value_to(storage, "color_duration")
-        ui.input(
-            "Alert Duration",
-            placeholder="3",
-            value="3",
-            on_change=validator.validate_alert_settings,
-        ).bind_value_to(storage, "alert_duration")
-
-        ui.button(
-            "Next",
-            on_click=lambda: validator.verify_settings(
-                stepper, "alert_settings_validated", "Alert settings validated!"
-            ),
-        ).bind_enabled_from(storage, "alert_settings_validated")
-        ui.button("Back", on_click=stepper.previous()).props("flat")
-
-
-def create_finalize_setup_step(stepper, validator, formatter):
-    """Creates the finalize setup step."""
-    with ui.step("Finalize setup"):
-        ui.button(
-            "Finish",
-            on_click=lambda: validator.verify_setup_is_complete(stepper, formatter),
-        )
-        ui.button("Back", on_click=stepper.previous()).props("flat")
-
-
-def create_control_card(storage):
-    """Creates the control card."""
-    with ui.card().bind_visibility_from(storage, "setup_complete").props("vertical").style(
-        "max-width: 600px; margin: 0 auto;"
-    ):
-        ui.label().bind_text_from(
-            storage, "username", backward=lambda username: f"Welcome, {username}!"
-        ).style("margin: 0 auto;").tailwind.font_weight("bold")
-        runner = CommandRunner()
-        ui.button("Start StripAlerts", on_click=runner.start_main_script)
-        ui.button("Stop StripAlerts", on_click=runner.stop_main_script)
-        ui.button(
-            "Return to setup",
-            on_click=lambda: storage.set("setup_complete", False),
-        ).style("margin: 0 auto;").props("flat")
+    setup_elements = SetupElements(storage, validator, formatter)
+    setup_elements.create_stepper()
+    setup_elements.create_control_card()
 
 
 # Run the app with necessary configurations

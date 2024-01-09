@@ -27,9 +27,9 @@ class EventPoller:
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=5)
-    async def fetch_events(self):
+    async def poll_events(self):
         """
-        Fetch events from the Chaturbate Events API.
+        Poll events from the Chaturbate Events API.
 
         Yields:
             list: List of events.

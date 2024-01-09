@@ -12,7 +12,7 @@ LED_BRIGHTNESS = float(os.getenv("LED_BRIGHTNESS", "0.1"))
 
 
 # Alert parameters
-COLOR_ALERT_TOKENS = int(os.getenv("COLOR_ALERT_TOKENS", "35"))
+TOKENS_FOR_COLOR_ALERT = int(os.getenv("TOKENS_FOR_COLOR_ALERT", "35"))
 ALERT_DURATION = int(os.getenv("ALERT_DURATION", "60"))
 COLOR_DURATION = int(os.getenv("COLOR_DURATION", "600"))
 

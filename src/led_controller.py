@@ -7,7 +7,7 @@ import time
 from adafruit_led_animation.animation import pulse, rainbow, rainbowsparkle, solid
 from adafruit_led_animation.sequence import AnimationSequence
 
-from alert_colors import AlertColors
+from alert_colors_enum import AlertColor
 from constants import (
     ALERT_DURATION,
     ANIMATION_SPEED,
@@ -69,11 +69,11 @@ class LEDController:
                 period=PULSE_PERIOD,
                 name=f"{color.name}_pulse",
             )
-            for color in AlertColors
+            for color in AlertColor
         ]
         solid_animations = [
             solid.Solid(self.pixels, color=color.value, name=f"{color.name}")
-            for color in AlertColors
+            for color in AlertColor
         ]
 
         return AnimationSequence(
@@ -99,17 +99,17 @@ class LEDController:
             self.animations.animate()
             await asyncio.sleep(ANIMATION_SPEED)
 
-    async def activate_normal_alert(self):
-        """Activate the normal alert."""
+    async def trigger_normal_alert(self):
+        """Trigger the normal alert."""
         previous_state = self.animations.current_animation.name
         self.logger.debug("Activating normal alert.")
         self.animations.activate("sparkle")
         await asyncio.sleep(ALERT_DURATION)
         self.animations.activate(previous_state)
 
-    async def activate_color_alert(self, color):
+    async def trigger_color_alert(self, color):
         """
-        Activate the color alert.
+        Trigger the color alert.
 
         Args:
             color (AlertColor): Color alert to activate.

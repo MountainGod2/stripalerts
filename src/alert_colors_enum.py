@@ -2,7 +2,7 @@
 from enum import Enum
 
 
-class AlertColors(Enum):
+class AlertColor(Enum):
     """
     Enum for alert colors.
 
@@ -40,4 +40,4 @@ class AlertColors(Enum):
         Returns:
             AlertColor: AlertColor enum value.
         """
-        return AlertColors.__members__.get(color_str.upper(), None)
+        return AlertColor.__members__.get(color_str.upper(), None)
