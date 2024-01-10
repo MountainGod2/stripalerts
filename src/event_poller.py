@@ -36,6 +36,7 @@ class EventPoller:
         """
         async with aiohttp.ClientSession() as session:
             url = self.base_url
+            self.logger.debug(f"Initial URL: {url}")
             while True:
                 try:
                     async with session.get(
@@ -44,6 +45,7 @@ class EventPoller:
                         if response.status == 200:
                             data = await response.json()
                             url = data["nextUrl"]
+                            # self.logger.debug(f"Next URL: {url}") # Commented out to reduce log spam
                             self.retry_delay = INITIAL_RETRY_DELAY
                             yield data["events"]
                         # If response status is any 5xx error

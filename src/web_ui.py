@@ -5,12 +5,13 @@ The web UI is built using the NiceGUI library.
 """
 import asyncio
 import platform
-import shlex
 import socket
 
 import board
 import requests
 from nicegui import app, ui
+
+from stripalerts_app import StripAlertsApp
 
 BUFFER_SIZE = 4096  # Buffer size for reading process output in bytes
 
@@ -32,42 +33,20 @@ def get_ip() -> str:
 
 
 class CommandRunner:
-    """
-    Class to run commands asynchronously.
-
-    Attributes:
-        result (ui.markdown): Markdown component to display the process output.
-        process (asyncio.subprocess.Process): Process instance.
-    """
-
     def __init__(self):
         self.result = ui.markdown()
-        self.process = None
+        self.strip_alerts_app = None
 
-    async def start_main_script(self):
-        """Starts the main script asynchronously."""
-        if self.process is None or self.process.returncode is not None:
-            self.process = await self.create_subprocess("sudo python3 src/main.py")
-            asyncio.create_task(self.read_process_output(self.process))
+    def start_main_script(self):
+        """Starts the main script."""
+        if not self.strip_alerts_app:
+            self.strip_alerts_app = StripAlertsApp()
+            asyncio.create_task(self.strip_alerts_app.start_service())
 
-    async def stop_main_script(self):
-        """Stops the main script asynchronously."""
-        if self.process and self.process.returncode is None:
-            self.process.terminate()
-            await self.process.wait()
-
-    async def create_subprocess(self, command: str):
-        """Creates a subprocess asynchronously."""
-        return await asyncio.create_subprocess_exec(
-            *shlex.split(command),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-
-    async def read_process_output(self, process):
-        """Reads the process output asynchronously."""
-        while data := await process.stdout.read(BUFFER_SIZE):
-            self.result.content += data.decode()
+    def stop_main_script(self):
+        """Stops the main script."""
+        if self.strip_alerts_app:
+            asyncio.create_task(self.strip_alerts_app.stop_service())
 
 
 class Validator:
