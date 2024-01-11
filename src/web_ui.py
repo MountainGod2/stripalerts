@@ -4,11 +4,13 @@ This module contains the web UI for the StripAlerts setup.
 The web UI is built using the NiceGUI library.
 """
 import asyncio
+import logging
 import socket
+
 import board
 import requests
 from nicegui import app, ui
-import logging
+
 from stripalerts_app import StripAlertsApp
 
 BUFFER_SIZE = 4096  # Buffer size for reading process output in bytes
