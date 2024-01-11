@@ -4,13 +4,11 @@ This module contains the web UI for the StripAlerts setup.
 The web UI is built using the NiceGUI library.
 """
 import asyncio
-import platform
 import socket
-
 import board
 import requests
 from nicegui import app, ui
-
+import logging
 from stripalerts_app import StripAlertsApp
 
 BUFFER_SIZE = 4096  # Buffer size for reading process output in bytes
@@ -187,6 +185,22 @@ class Formatter:
                 env_file.write(f"{key.upper()}={value}\n")
 
 
+class LogElementHandler(logging.Handler):
+    def __init__(self, element: ui.log, level: int = logging.NOTSET) -> None:
+        self.element = element
+        super().__init__(level)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            self.element.push(msg)
+        except Exception:
+            self.handleError(record)
+
+
+log = ui.log(max_lines=10).classes("w-full")
+
+
 class SetupElements:
     """
     Class to setup the web UI elements.
@@ -229,7 +243,7 @@ class SetupElements:
                         "https://events.testbed.cb.dev/events/"
                     )
                 },
-            ).bind_value_to(self.storage, "token_url")
+            ).bind_value(self.storage, "token_url")
 
             ui.button(
                 "Next",
@@ -266,7 +280,7 @@ class SetupElements:
                     stepper, "led_settings_validated", "LED settings validated!"
                 ),
             ).bind_enabled_from(self.storage, "led_settings_validated")
-            ui.button("Back", on_click=stepper.previous()).props("flat")
+            ui.button("Back", on_click=lambda: stepper.previous()).props("flat")
 
     # Stepper step #3
     def _create_alert_settings_step(self, stepper):
@@ -297,7 +311,7 @@ class SetupElements:
                     stepper, "alert_settings_validated", "Alert settings validated!"
                 ),
             ).bind_enabled_from(self.storage, "alert_settings_validated")
-            ui.button("Back", on_click=stepper.previous()).props("flat")
+            ui.button("Back", on_click=lambda: stepper.previous()).props("flat")
 
     # Stepper step #4
     def _create_finalize_setup_step(self, stepper):
@@ -307,11 +321,12 @@ class SetupElements:
                 "Finish",
                 on_click=lambda: self.validator.verify_setup_is_complete(stepper, self.formatter),
             )
-            ui.button("Back", on_click=stepper.previous()).props("flat")
+            ui.button("Back", on_click=lambda: stepper.previous()).props("flat")
 
     # Create the control card
     def create_control_card(self):
         """Creates the control card."""
+        logger = logging.getLogger()
         with ui.card().bind_visibility_from(self.storage, "setup_complete").props("vertical").style(
             "max-width: 600px; margin: 0 auto;"
         ):
@@ -321,12 +336,24 @@ class SetupElements:
                 backward=lambda username: f"Welcome, {username}!",
             ).style("margin: 0 auto;").tailwind.font_weight("bold")
             runner = CommandRunner()
-            ui.button("Start StripAlerts", on_click=runner.start_main_script)
-            ui.button("Stop StripAlerts", on_click=runner.stop_main_script)
+            ui.button("Start StripAlerts", on_click=runner.start_main_script).style(
+                "margin: 0 auto;"
+            )
+            ui.button("Stop StripAlerts", on_click=runner.stop_main_script).style("margin: 0 auto;")
             ui.button(
                 "Return to setup",
-                on_click=lambda: self.storage.set("setup_complete", False),
+                on_click=lambda: self.storage.__setitem__("setup_complete", False),
             ).style("margin: 0 auto;").props("flat")
+            log = (
+                ui.log(max_lines=10)
+                .classes("w-full")
+                .classes("w-full p-2 border border-gray-300 rounded")
+                .style("max-height: 200px; overflow-y: auto;")
+            )
+            logger.addHandler(LogElementHandler(log))
+            # ui.log(max_lines=10).classes("w-full p-2 border border-gray-300 rounded").style(
+            #     "max-height: 200px; overflow-y: auto;"
+            # )
 
 
 def initialize_storage(storage):
@@ -366,6 +393,7 @@ def index():
 ui.run(
     host=get_ip(),
     port=8080,
-    reload=platform.system() != "Windows",
+    reload=False,
     storage_secret="stripalerts",
+    uvicorn_reload_excludes="*.log, app.log",
 )

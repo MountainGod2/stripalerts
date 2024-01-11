@@ -36,6 +36,10 @@ def validate_env_vars():
         raise ValueError(f"Missing environment variables: {', '.join(missing_vars)}")
 
 
+setup_logging()
+load_dotenv()
+
+
 @dataclass
 class APIConfig:
     """
@@ -146,8 +150,6 @@ class StripAlertsApp:
 
     async def start_service(self):
         """Starts the main application."""
-        setup_logging()
-        load_dotenv()
         logging.info("StripAlerts started.")
 
         # Load environment variables and validate required variables are set
