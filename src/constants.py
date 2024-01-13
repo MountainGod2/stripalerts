@@ -1,20 +1,32 @@
 """Constants for the alert light program."""
 import os
+from dataclasses import dataclass
 
 import dotenv
 
 dotenv.load_dotenv()
 
-# LED parameters
-LED_PIN = str(os.getenv("LED_PIN", ""))
-LED_COUNT = int(os.getenv("LED_COUNT", "5"))
-LED_BRIGHTNESS = float(os.getenv("LED_BRIGHTNESS", "0.1"))
+@dataclass
+class LEDConfig:
+    pin: str = os.getenv("LED_PIN", "")
+    count: int = int(os.getenv("LED_COUNT", "5"))
+    brightness: float = float(os.getenv("LED_BRIGHTNESS", "0.1"))
 
 
-# Alert parameters
-TOKENS_FOR_COLOR_ALERT = int(os.getenv("TOKENS_FOR_COLOR_ALERT", "35"))
-ALERT_DURATION = int(os.getenv("ALERT_DURATION", "60"))
-COLOR_DURATION = int(os.getenv("COLOR_DURATION", "600"))
+@dataclass
+class AlertConfig:
+    tokens_for_color_alert: int = int(os.getenv("TOKENS_FOR_COLOR_ALERT", "35"))
+    alert_duration: int = int(os.getenv("ALERT_DURATION", "60"))
+    color_duration: int = int(os.getenv("COLOR_DURATION", "600"))
+
+
+@dataclass
+class APIConfig:
+    username: str = os.getenv("USERNAME", "")
+    token: str = os.getenv("TOKEN", "")
+    base_url: str = os.getenv("BASE_URL", "https://eventsapi.chaturbate.com/events/")
+    request_timeout: int = int(os.getenv("TIMEOUT", "30"))
+
 
 # Animation parameters
 ANIMATION_SPEED = 0.01  # Speed of animation loop
@@ -30,7 +42,8 @@ SPARKLE_NUM_SPARKLES = 5  # Number of sparkles in sparkle animation
 SPARKLE_BASE_BRIGHTNESS = 0.5  # Base brightness of sparkle animation
 
 # Pulse alert parameters (used for color alerts)
-PULSE_PERIOD = ALERT_DURATION * (2 // 3)  # Time in seconds to complete a pulse cycle
+alert_config = AlertConfig()
+PULSE_PERIOD = alert_config.alert_duration * (2 // 3)  # Time in seconds to complete a pulse cycle
 PULSE_PERIOD = 1 if PULSE_PERIOD < 1 else PULSE_PERIOD  # Minimum pulse period is 1 second
 PULSE_SPEED = 0.01  # Speed of pulse animation
 

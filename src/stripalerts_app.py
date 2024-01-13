@@ -7,18 +7,18 @@ import logging
 import logging.config
 import os
 import signal
-from dataclasses import dataclass
 
 import board
 import neopixel
-from dotenv import load_dotenv
 
-from constants import API_TIMEOUT
+from constants import API_TIMEOUT, LEDConfig, APIConfig
 from event_handler import EventHandler
 from event_poller import EventPoller
 from led_controller import LEDController
 from log_formatter import LogAligner
 
+
+    
 
 def setup_logging():
     """Setup logging configuration from JSON file."""
@@ -26,53 +26,22 @@ def setup_logging():
         config = json.load(config_file)
         logging.config.dictConfig(config)
 
-
-def validate_env_vars():
-    """Validate that all required environment variables are set."""
-    required_vars = ["USERNAME", "TOKEN"]
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-    if missing_vars:
-        logging.error("Missing environment variables: %s", missing_vars)
-        raise ValueError(f"Missing environment variables: {', '.join(missing_vars)}")
-
-
 setup_logging()
-load_dotenv()
 
 
-@dataclass
-class APIConfig:
-    """
-    Class to hold API configuration.
+class ValidateRequiredVariables:
+    """Validates required vairables are set."""
+    def __init__(self):
+        self.logger = logging.getLogger(self.__class__.__name__)
 
-    Attributes:
-        username (str): Chaturbate username.
-        token (str): Chaturbate API token.
-        base_url (str): Base URL for the API.
-        request_timeout (int): Timeout for API requests.
-    """
-
-    username: str = os.getenv("USERNAME", "")
-    token: str = os.getenv("TOKEN", "")
-    base_url: str = os.getenv("BASE_URL", "https://eventsapi.chaturbate.com/events/")
-    request_timeout: int = int(os.getenv("TIMEOUT", "30"))
-
-
-@dataclass
-class LEDConfig:
-    """
-    Class to hold LED configuration.
-
-    Attributes:
-        pin (str): GPIO pin for the LED strip.
-        count (int): Number of LEDs in the strip.
-        brightness (float): Brightness of the LEDs.
-    """
-
-    pin: str = str(os.getenv("LED_PIN", "D18"))
-    count: int = int(os.getenv("LED_COUNT", "5"))
-    brightness: float = float(os.getenv("LED_BRIGHTNESS", "0.1"))
-
+    def validate_env_vars(self):
+        """Validate that all required environment variables are set."""
+        required_vars = ["USERNAME", "TOKEN"]
+        missing_vars = [var for var in required_vars if not os.getenv(var)]
+        if missing_vars:
+            logging.error("Missing environment variables: %s", missing_vars)
+            raise ValueError(f"Missing environment variables: {', '.join(missing_vars)}")
+            
 
 class AppConfig:
     """
@@ -88,8 +57,8 @@ class AppConfig:
     def __init__(self):
         self.api_config = APIConfig()
         self.led_config = LEDConfig()
-        self.logger = logging.getLogger(self.__class__.__name__)
         self.pixel_pin = getattr(board, self.led_config.pin)
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def initialize_led_strip(
         self,
@@ -150,10 +119,11 @@ class StripAlertsApp:
 
     async def start_service(self):
         """Starts the main application."""
-        logging.info("StripAlerts started.")
 
+        logging.info("StripAlerts started.")
+        validate_envs = ValidateRequiredVariables()
         # Load environment variables and validate required variables are set
-        validate_env_vars()
+        validate_envs.validate_env_vars()
 
         # Create and start tasks for LED animation and event processing
         self.animation_task = asyncio.create_task(self.led_controller.run_animation_loop())
