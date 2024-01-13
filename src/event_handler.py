@@ -3,17 +3,21 @@ import logging
 from alert_colors_enum import AlertColor
 from constants import AlertConfig
 
+
 # Define Pydantic models for structured data
 class User(BaseModel):
     username: str = "Unknown"
+
 
 class Tip(BaseModel):
     tokens: int = 0
     message: str = ""
 
+
 class TipEvent(BaseModel):
     user: User
     tip: Tip
+
 
 class EventHandler:
     """
@@ -70,7 +74,6 @@ class EventHandler:
         except Exception as e:
             self.logger.error(f"Error processing tip event: {e}")
 
-
     def clean_message(self, message):
         """
         Clean the message by removing the "-- Select One --" option.
@@ -82,4 +85,3 @@ class EventHandler:
             str: Cleaned message.
         """
         return message.replace("-- Select One -- | ", "").replace("-- Select One --", "")
-

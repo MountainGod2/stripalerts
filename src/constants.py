@@ -6,6 +6,7 @@ import dotenv
 
 dotenv.load_dotenv()
 
+
 @dataclass
 class LEDConfig:
     pin: str = os.getenv("LED_PIN", "")

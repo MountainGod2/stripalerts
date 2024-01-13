@@ -55,12 +55,12 @@ class LEDController:
         solid_animations = self.create_solid_animations()
 
         return AnimationSequence(
-            rainbow_animation, 
-            sparkle_animation, 
-            *pulse_animations, 
-            *solid_animations, 
-            advance_interval=None, 
-            auto_clear=True
+            rainbow_animation,
+            sparkle_animation,
+            *pulse_animations,
+            *solid_animations,
+            advance_interval=None,
+            auto_clear=True,
         )
 
     def create_rainbow_animation(self):
@@ -76,12 +76,12 @@ class LEDController:
         Create the sparkle animation.
         """
         return rainbowsparkle.RainbowSparkle(
-            self.pixels, 
-            speed=SPARKLE_SPEED, 
-            period=SPARKLE_PERIOD, 
-            num_sparkles=SPARKLE_NUM_SPARKLES, 
-            background_brightness=SPARKLE_BASE_BRIGHTNESS, 
-            name="sparkle"
+            self.pixels,
+            speed=SPARKLE_SPEED,
+            period=SPARKLE_PERIOD,
+            num_sparkles=SPARKLE_NUM_SPARKLES,
+            background_brightness=SPARKLE_BASE_BRIGHTNESS,
+            name="sparkle",
         )
 
     def create_pulse_animations(self):
@@ -94,8 +94,9 @@ class LEDController:
                 speed=PULSE_SPEED,
                 color=color.value,
                 period=PULSE_PERIOD,
-                name=f"{color.name}_pulse"
-            ) for color in AlertColor
+                name=f"{color.name}_pulse",
+            )
+            for color in AlertColor
         ]
 
     def create_solid_animations(self):
