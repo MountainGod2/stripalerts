@@ -1,4 +1,3 @@
-
 # StripAlerts - LED Alerts for Chaturbate Events
 
 ![StripAlerts](https://raw.githubusercontent.com/MountainGod2/stripalerts/master/static/example.gif)
@@ -18,7 +17,7 @@ Enhance your Chaturbate streaming experience with StripAlerts! This Python scrip
 ### Prerequisites
 
 - Python 3.x: [Download Python](https://www.python.org/downloads/)
-- Libraries: `aiohttp`, `neopixel`, `board`, `adafruit_led_animation`, `dotenv`. Installation instructions are provided in the installation section.
+- Libraries: `aiohttp`, `adafruit_led_animation`, `dotenv` , etc. (See `requirements.txt`)
 
 ### Installation
 
@@ -34,17 +33,22 @@ Enhance your Chaturbate streaming experience with StripAlerts! This Python scrip
 
 ### Configuration
 
-- Create a `.env` file in the root directory.
-- Add the following variables:
+- Create a `.env` file in the root directory with the following variables:
    ```
    USERNAME=YourChaturbateAPIUsername
    TOKEN=YourChaturbateAPIToken
+   BASE_URL=https://events.testbed.cb.dev/events/
+   LED_PIN=D18
+   LED_COUNT=100
+   LED_BRIGHTNESS=0.1
+   COLOR_ALERT_TOKENS=35
+   COLOR_DURATION=600
+   ALERT_DURATION=3
    ```
 
 ### Customizing LED Settings
 
-Modify `LED_COUNT` & `LED_PIN` in `src/constants.py` to match your connected LED strip. Other values such as the tip amount `ALERT_TOKENS`
-
+Modify the settings in the `.env` file to match your connected LED strip and user preferences.
 
 ### Usage
 
@@ -54,7 +58,6 @@ Modify `LED_COUNT` & `LED_PIN` in `src/constants.py` to match your connected LED
    ```
 2. Observe the LED strip responding to Chaturbate events.
 
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -63,4 +66,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Chaturbate Events API](https://chaturbate.com/) for providing the event data.
 - [Adafruit](https://www.adafruit.com/) for the fantastic LED animation library.
-- [ChatGPT](https://chat.openai.com/) for creating 90% of this program (README.md included), and for letting me cosplay as a python programmer.
+- [ChatGPT](https://chat.openai.com/) for creating 90% of this program (README.md included), and for letting me pretend I know Python.
