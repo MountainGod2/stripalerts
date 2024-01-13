@@ -6,6 +6,7 @@ output.txt
 .nicegui
 pyproject.toml
 .ruff_cache
+*.gif
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

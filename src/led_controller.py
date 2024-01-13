@@ -9,9 +9,9 @@ from adafruit_led_animation.sequence import AnimationSequence
 
 from alert_colors_enum import AlertColor
 from constants import (
-    ALERT_DURATION,
+    AlertConfig,
+    LEDConfig,
     ANIMATION_SPEED,
-    COLOR_DURATION,
     PULSE_PERIOD,
     PULSE_SPEED,
     RAINBOW_PERIOD,
@@ -42,39 +42,17 @@ class LEDController:
         self.current_color = None
         self.color_set_time = None
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.led_config = LEDConfig()
+        self.alert_config = AlertConfig()
 
     def create_animations(self):
         """
-        Create the animation sequence.
-
-        Returns:
-            AnimationSequence: Animation sequence.
+        Create the animation sequence by combining various animations.
         """
-        rainbow_animation = rainbow.Rainbow(
-            self.pixels, speed=RAINBOW_SPEED, period=RAINBOW_PERIOD, name="rainbow"
-        )
-        sparkle_animation = rainbowsparkle.RainbowSparkle(
-            self.pixels,
-            speed=SPARKLE_SPEED,
-            period=SPARKLE_PERIOD,
-            num_sparkles=SPARKLE_NUM_SPARKLES,
-            background_brightness=SPARKLE_BASE_BRIGHTNESS,
-            name="sparkle",
-        )
-        pulse_animations = [
-            pulse.Pulse(
-                self.pixels,
-                speed=PULSE_SPEED,
-                color=color.value,
-                period=PULSE_PERIOD,
-                name=f"{color.name}_pulse",
-            )
-            for color in AlertColor
-        ]
-        solid_animations = [
-            solid.Solid(self.pixels, color=color.value, name=f"{color.name}")
-            for color in AlertColor
-        ]
+        rainbow_animation = self.create_rainbow_animation()
+        sparkle_animation = self.create_sparkle_animation()
+        pulse_animations = self.create_pulse_animations()
+        solid_animations = self.create_solid_animations()
 
         return AnimationSequence(
             rainbow_animation,
@@ -85,13 +63,58 @@ class LEDController:
             auto_clear=True,
         )
 
+    def create_rainbow_animation(self):
+        """
+        Create the rainbow animation.
+        """
+        return rainbow.Rainbow(
+            self.pixels, speed=RAINBOW_SPEED, period=RAINBOW_PERIOD, name="rainbow"
+        )
+
+    def create_sparkle_animation(self):
+        """
+        Create the sparkle animation.
+        """
+        return rainbowsparkle.RainbowSparkle(
+            self.pixels,
+            speed=SPARKLE_SPEED,
+            period=SPARKLE_PERIOD,
+            num_sparkles=SPARKLE_NUM_SPARKLES,
+            background_brightness=SPARKLE_BASE_BRIGHTNESS,
+            name="sparkle",
+        )
+
+    def create_pulse_animations(self):
+        """
+        Create a list of pulse animations for each color.
+        """
+        return [
+            pulse.Pulse(
+                self.pixels,
+                speed=PULSE_SPEED,
+                color=color.value,
+                period=PULSE_PERIOD,
+                name=f"{color.name}_pulse",
+            )
+            for color in AlertColor
+        ]
+
+    def create_solid_animations(self):
+        """
+        Create a list of solid animations for each color.
+        """
+        return [
+            solid.Solid(self.pixels, color=color.value, name=f"{color.name}")
+            for color in AlertColor
+        ]
+
     async def run_animation_loop(self):
         """Run the animation loop."""
         while True:
             if (
                 self.current_color
                 and self.color_set_time
-                and (time.time() - self.color_set_time > COLOR_DURATION)
+                and (time.time() - self.color_set_time > self.alert_config.color_duration)
             ):
                 self.current_color = None
                 self.logger.info("Color alert duration expired. Resetting to rainbow.")
@@ -104,7 +127,7 @@ class LEDController:
         previous_state = self.animations.current_animation.name
         self.logger.debug("Activating normal alert.")
         self.animations.activate("sparkle")
-        await asyncio.sleep(ALERT_DURATION)
+        await asyncio.sleep(self.alert_config.alert_duration)
         self.animations.activate(previous_state)
 
     async def trigger_color_alert(self, color):
@@ -118,11 +141,11 @@ class LEDController:
         self.color_set_time = time.time()
         self.logger.debug(f"Activating color alert: {color.name.lower()}.")
         self.animations.activate(f"{color.name}_pulse")
-        await asyncio.sleep(ALERT_DURATION)
+        await asyncio.sleep(self.alert_config.alert_duration)
         color_time = (
-            f"{COLOR_DURATION} seconds"
-            if COLOR_DURATION < SECONDS_PER_MIN
-            else f"{COLOR_DURATION // SECONDS_PER_MIN} minutes"
+            f"{self.alert_config.color_duration} seconds"
+            if self.alert_config.color_duration < SECONDS_PER_MIN
+            else f"{self.alert_config.color_duration // SECONDS_PER_MIN} minutes"
         )
         self.logger.info(f"Setting lights to {color.name.lower()} for {color_time}.")
         self.animations.activate(color.name)

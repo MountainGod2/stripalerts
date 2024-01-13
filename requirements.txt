@@ -1,0 +1,8 @@
+Adafruit_Blinka==8.30.0
+adafruit_circuitpython_led_animation==2.8.0
+adafruit_circuitpython_neopixel==6.3.11
+aiofiles==23.2.1
+aiohttp==3.9.1
+backoff==2.2.1
+pydantic==2.5.3
+python-dotenv==1.0.0
