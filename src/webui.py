@@ -34,7 +34,7 @@ def set_env_var(var_name, value):
 def setup_configuration_stepper(storage):
     """Create a stepper for setting up configuration."""
     with ui.stepper().props("vertical").classes("w-full q-pa-md").style(
-        "max-width: 600px; margin: 0 auto; background-color: #202c39;"
+        "max-width: 350px; margin: 0 auto; background-color: #202c39;"
     ) as stepper:
         storage.update(setup_complete=False)
         storage.update(app_running=False)
@@ -86,7 +86,7 @@ def setup_configuration_stepper(storage):
             # Navigation buttons (centered)
             with ui.stepper_navigation().classes("center-container"):
                 ui.button("Back", on_click=stepper.previous).props("flat")
-                ui.button("Next", on_click=stepper.next)
+                ui.button("Next", on_click=stepper.next).props("color=primary")
 
         # Alerts configuration step
         with ui.step("Alerts Configuration"):
@@ -114,7 +114,7 @@ def setup_configuration_stepper(storage):
             # Navigation buttons (centered)
             with ui.stepper_navigation().classes("center-container"):
                 ui.button("Back", on_click=stepper.previous).props("flat")
-                ui.button("Next", on_click=stepper.next)
+                ui.button("Next", on_click=stepper.next).props("color=primary")
 
         # Setup stepper complete
         with ui.step("Setup Complete"):
@@ -133,7 +133,7 @@ def setup_configuration_stepper(storage):
                         storage.update(setup_complete=True),
                         storage.update(show_stepper=False),
                     ],
-                )
+                ).props("color=primary")
 
 
 # Helper functions for starting and stopping the service
@@ -150,21 +150,23 @@ def stop_service_logic(app_instance, storage):
 def setup_control_card(storage):
     """Create a control card for starting and stopping the application."""
     with ui.card().bind_visibility_from(storage, "setup_complete").classes("w-full q-pa-md").style(
-        "max-width: 600px; margin: 0 auto; background-color: #202c39; color: white;"
+        "max-width: 350px; margin: 0 auto; background-color: #202c39; color: white;"
     ):
         app_instance = StripAlertsApp()
         ui.button(
             "Start StripAlerts", on_click=lambda: start_service_logic(app_instance, storage)
-        ).style("margin: 0 auto;")
+        ).style("margin: 0 auto;").props("color=primary")
         ui.button(
             "Stop StripAlerts", on_click=lambda: stop_service_logic(app_instance, storage)
-        ).style("margin: 0 auto;").bind_visibility_from(storage, "app_running")
+        ).style("margin: 0 auto;").bind_visibility_from(storage, "app_running").props(
+            "color=accent"
+        )
 
 
 def setup_log_display(storage):
     """Display real-time logs."""
     with ui.card().bind_visibility_from(storage, "app_running").classes("w-full q-pa-md").style(
-        "max-width: 600px; margin: 0 auto; background-color: #202c39; color: white;"
+        "max-width: 350px; margin: 0 auto; background-color: #202c39; color: white;"
     ):
         log_content = ui.label("").classes("log-display q-mb-md font-bold")
 
@@ -197,43 +199,25 @@ async def update_log_content(log_label):
         log_label.set_text("Log file not found.")
 
 
-# Custom CSS for Chaturbate theme
-# ui.add_head_html('''
-#     <style>
-#         :root {
-#             --q-color-primary: #ff4500; /* Chaturbate orange for primary elements */
-#             --q-color-secondary: #333; /* Dark gray for secondary elements */
-#             --q-color-dark: #1a1a1a; /* Dark background */
-#             --q-color-light: #f2f2f2; /* Light text color */
-#         }
-#         .q-layout {
-#             background: var(--q-color-dark);
-#         }
-#         .q-btn {
-#             background: var(--q-color-primary);
-#             color: var(--q-color-light);
-#         }
-#         .q-input, .q-card, .q-stepper {
-#             background: var(--q-color-secondary);
-#             color: var(--q-color-light);
-#         }
-#         .log-display {
-#             color: var(--q-color-primary); /* Orange text for logs */
-#         }
-#     </style>
-# ''')
-
-
 @ui.page("/")
 def index():
     """Run the web UI."""
     storage = app.storage.user
-    ui.colors(primary="#68b5f0")
-    ui.query("body").style("background-color: rgb(23, 32, 42);")
+    ui.colors(primary="#68b5f0", secondary="#202c39", accent="#f47321")
+    ui.query("body").style(
+        "background-color: #121212; color: #FFFFFF;"
+    )  # Dark background with light text
+
     # Setting up the UI elements
-    setup_configuration_stepper(storage)
-    setup_control_card(storage)
-    setup_log_display(storage)
+    with ui.column().classes("w-full q-pa-md").style(
+        "max-width: 500px; margin: 0 auto; background-color: #ff0000; color: white;"
+    ):
+        with ui.card().classes("w-full q-pa-md").style(
+            "max-width: 400px; margin: 0 auto; background-color: #202c39; color: white; height: 600px;"
+        ):
+            setup_configuration_stepper(storage)
+            setup_control_card(storage)
+            setup_log_display(storage)
 
 
 # Run the NiceGUI server

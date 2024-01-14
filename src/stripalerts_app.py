@@ -117,7 +117,6 @@ class StripAlertsApp:
 
     async def start_service(self):
         """Starts the main application."""
-        setup_logging()
         logging.info("StripAlerts started.")
         validate_envs = ValidateRequiredVariables()
         # Load environment variables and validate required variables are set
@@ -177,6 +176,7 @@ class StripAlertsApp:
         await app.start_service()
 
 
+setup_logging()
 if __name__ == "__main__":
     # Option to run the web UI
     if "--web-ui" in sys.argv:
