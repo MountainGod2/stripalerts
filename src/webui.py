@@ -162,7 +162,6 @@ def setup_control_card(storage):
             "color=accent"
         )
 
-
 def setup_log_display(storage):
     """Display real-time logs."""
     with ui.card().bind_visibility_from(storage, "app_running").classes("w-full q-pa-md").style(
@@ -209,15 +208,12 @@ def index():
     )  # Dark background with light text
 
     # Setting up the UI elements
-    with ui.column().classes("w-full q-pa-md").style(
-        "max-width: 500px; margin: 0 auto; background-color: #ff0000; color: white;"
+    with ui.card().classes("w-full q-pa-md").style(
+        "max-width: 400px; margin: 0 auto; background-color: #202c39; color: white; height: 600px;"
     ):
-        with ui.card().classes("w-full q-pa-md").style(
-            "max-width: 400px; margin: 0 auto; background-color: #202c39; color: white; height: 600px;"
-        ):
-            setup_configuration_stepper(storage)
-            setup_control_card(storage)
-            setup_log_display(storage)
+        setup_configuration_stepper(storage)
+        setup_control_card(storage)
+        setup_log_display(storage)
 
 
 # Run the NiceGUI server
