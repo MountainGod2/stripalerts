@@ -26,9 +26,6 @@ def setup_logging():
         logging.config.dictConfig(config)
 
 
-setup_logging()
-
-
 class ValidateRequiredVariables:
     """Validates required vairables are set."""
 
@@ -120,7 +117,7 @@ class StripAlertsApp:
 
     async def start_service(self):
         """Starts the main application."""
-
+        setup_logging()
         logging.info("StripAlerts started.")
         validate_envs = ValidateRequiredVariables()
         # Load environment variables and validate required variables are set
@@ -138,11 +135,11 @@ class StripAlertsApp:
         """Check if the application is currently running."""
         return not self.shutdown_event.is_set()
 
-    def get_logs(self):
+    async def get_logs(self):
         """Retrieve log contents."""
         try:
-            with open("app.log", "r") as log_file:
-                return log_file.read()
+            with open("app.log", "r"):
+                await LogAligner().align_log_entries()
         except FileNotFoundError:
             return "Log file not found."
 
@@ -165,10 +162,13 @@ class StripAlertsApp:
             except asyncio.CancelledError:
                 pass
 
-        await self.led_controller.stop_animation()
-        logging.info("StripAlerts stopped.")
-        await LogAligner(delete_original=True).align_log_entries()
+        try:
+            await self.led_controller.stop_animation()
+        except Exception:
+            pass
 
+        await self.get_logs()
+        logging.info("StripAlerts stopped.")
 
     # Optional: If you want to support standalone execution of the script
     @staticmethod

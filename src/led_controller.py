@@ -155,5 +155,4 @@ class LEDController:
         self.animations.freeze()
         self.pixels.fill((0, 0, 0))
         self.pixels.show()
-        self.pixels.deinit()
         await asyncio.sleep(0)
