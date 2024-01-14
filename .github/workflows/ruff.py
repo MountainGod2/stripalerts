@@ -1,4 +1,12 @@
-on: [push]
+# Github action for running python linting with ruff 
+
+name: Ruff linter
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 jobs:
   ruff:
