@@ -1,8 +1,8 @@
 # StripAlerts - LED Alerts for Chaturbate Events
 
-![example](https://github.com/MountainGod2/stripalerts/assets/88257202/bedc83a7-e428-4026-9d2c-249b31c61371)
-
 Enhance your Chaturbate streaming experience with StripAlerts! This Python script integrates with the Chaturbate Events API to process tip events, controlling an LED strip to display visual alerts.
+
+![example](https://github.com/MountainGod2/stripalerts/assets/88257202/bedc83a7-e428-4026-9d2c-249b31c61371)
 
 ## Key Features
 
@@ -33,7 +33,7 @@ Enhance your Chaturbate streaming experience with StripAlerts! This Python scrip
 
 ### Configuration
 
-- Create a `.env` file in the root directory with the following variables:
+- Create a `.env` file in the root directory with the following variables or use `webui.py`:
    ```
    USERNAME=YourChaturbateAPIUsername
    TOKEN=YourChaturbateAPIToken
@@ -45,6 +45,8 @@ Enhance your Chaturbate streaming experience with StripAlerts! This Python scrip
    COLOR_DURATION=600
    ALERT_DURATION=3
    ```
+
+![setup_example](https://github.com/MountainGod2/stripalerts/assets/88257202/410849b5-9cd1-486f-bda2-09faf4b8ab6e)
 
 ### Customizing LED Settings
 
