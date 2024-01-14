@@ -1,12 +1,9 @@
 # Miscellaneous
-credentials.*
-config.ini
+*.toml
 output.txt
 .pylintrc
 .nicegui
-pyproject.toml
 .ruff_cache
-*.gif
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

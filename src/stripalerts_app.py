@@ -138,7 +138,7 @@ class StripAlertsApp:
         """Retrieve log contents."""
         try:
             with open("app.log", "r"):
-                await LogAligner().align_log_entries()
+                await LogAligner(delete_original=True).align_log_entries()
         except FileNotFoundError:
             return "Log file not found."
 
