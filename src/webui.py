@@ -158,9 +158,8 @@ def setup_control_card(storage):
         ).style("margin: 0 auto;").props("color=primary")
         ui.button(
             "Stop StripAlerts", on_click=lambda: stop_service_logic(app_instance, storage)
-        ).style("margin: 0 auto;").bind_visibility_from(storage, "app_running").props(
-            "color=accent"
-        )
+        ).style("margin: 0 auto;").bind_visibility_from(storage, "app_running").props("flat")
+
 
 def setup_log_display(storage):
     """Display real-time logs."""
@@ -197,7 +196,6 @@ async def update_log_content(log_label):
     except FileNotFoundError:
         log_label.set_text("Log file not found.")
 
-
 @ui.page("/")
 def index():
     """Run the web UI."""
@@ -209,12 +207,18 @@ def index():
 
     # Setting up the UI elements
     with ui.card().classes("w-full q-pa-md").style(
-        "max-width: 400px; margin: 0 auto; background-color: #202c39; color: white; height: 600px;"
+        "max-width: 400px; margin: 0 auto; background-color: #202c39; color: white; min-height: 680px;"
     ):
+        # Container for centering the image
+        with ui.element().classes("flex flex-column items-center justify-center").style("margin-top: 50px; margin: 0 auto; margin-bottom: 0px;"):
+            ui.image(
+                source="https://github.com/MountainGod2/stripalerts/assets/88257202/92fe191c-ad63-4181-93e3-98ba5e2e9eb0"
+            ).style(
+                "width: 200px; height: auto; margin: 0 auto;"
+            )
         setup_configuration_stepper(storage)
         setup_control_card(storage)
         setup_log_display(storage)
-
 
 # Run the NiceGUI server
 ui.run(title="StripAlerts", port=8080, reload=False, storage_secret="stripalerts", dark=True)
