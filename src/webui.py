@@ -136,15 +136,23 @@ def setup_configuration_stepper(storage):
                 ).props("color=primary")
 
 
-# Helper functions for starting and stopping the service
-def start_service_logic(app_instance, storage):
-    asyncio.create_task(app_instance.start_service())
-    storage.update(app_running=True)
+class ControlFunctions:
+    def __init__(self):
+        self.app_instance = None
 
+    # Helper functions for starting and stopping the service
+    async def start_service_logic(self, storage):
+        self.app_instance = StripAlertsApp()
+        storage.update(app_running=True)
+        self.app_instance.start_service_logic(
+            self.app_instance, storage
+        )  # Start services using the unified method
+        await self.app_instance.shutdown_event.wait()  # Wait for the shutdown event to be set
 
-def stop_service_logic(app_instance, storage):
-    asyncio.create_task(app_instance.stop_service())
-    storage.update(app_running=False)
+    def stop_service_logic(self, storage):
+        if self.app_instance:
+            asyncio.create_task(self.app_instance.stop_service())
+        storage.update(app_running=False)
 
 
 def setup_control_card(storage):
@@ -152,18 +160,18 @@ def setup_control_card(storage):
     with ui.card().bind_visibility_from(storage, "setup_complete").classes("w-full q-pa-md").style(
         "max-width: 350px; margin: 0 auto; background-color: #202c39; color: white;"
     ):
-        app_instance = StripAlertsApp()
+        control_functions = ControlFunctions()
         ui.button(
-            "Start StripAlerts", on_click=lambda: start_service_logic(app_instance, storage)
+            "Start StripAlerts", on_click=lambda: control_functions.start_service_logic(storage)
         ).style("margin: 0 auto;").props("color=primary")
         ui.button(
-            "Stop StripAlerts", on_click=lambda: stop_service_logic(app_instance, storage)
+            "Stop StripAlerts", on_click=lambda: control_functions.stop_service_logic(storage)
         ).style("margin: 0 auto;").bind_visibility_from(storage, "app_running").props("flat")
 
 
 def setup_log_display(storage):
     """Display real-time logs."""
-    with ui.card().bind_visibility_from(storage, "app_running").classes("w-full q-pa-md").style(
+    with ui.card().bind_visibility_from(storage, "setup_complete").classes("w-full q-pa-md").style(
         "max-width: 350px; margin: 0 auto; background-color: #202c39; color: white;"
     ):
         log_content = ui.label("").classes("log-display q-mb-md font-bold")
@@ -196,6 +204,7 @@ async def update_log_content(log_label):
     except FileNotFoundError:
         log_label.set_text("Log file not found.")
 
+
 @ui.page("/")
 def index():
     """Run the web UI."""
@@ -210,15 +219,16 @@ def index():
         "max-width: 400px; margin: 0 auto; background-color: #202c39; color: white; min-height: 680px;"
     ):
         # Container for centering the image
-        with ui.element().classes("flex flex-column items-center justify-center").style("margin-top: 50px; margin: 0 auto; margin-bottom: 0px;"):
+        with ui.element().classes("flex flex-column items-center justify-center").style(
+            "margin-top: 50px; margin: 0 auto; margin-bottom: 0px;"
+        ):
             ui.image(
                 source="https://github.com/MountainGod2/stripalerts/assets/88257202/92fe191c-ad63-4181-93e3-98ba5e2e9eb0"
-            ).style(
-                "width: 200px; height: auto; margin: 0 auto;"
-            )
+            ).style("width: 200px; height: auto; margin: 0 auto;")
         setup_configuration_stepper(storage)
         setup_control_card(storage)
         setup_log_display(storage)
+
 
 # Run the NiceGUI server
 ui.run(title="StripAlerts", port=8080, reload=False, storage_secret="stripalerts", dark=True)
