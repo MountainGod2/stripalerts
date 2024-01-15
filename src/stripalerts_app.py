@@ -96,15 +96,19 @@ class StripAlertsApp:
         self.shutdown_event = asyncio.Event()
         self.animation_task = None
         self.processing_task = None
-
-        # Initialize configurations
         self.app_config = AppConfig()
+        self.led_strip = None
+        self.led_controller = None
+        self.poller = None
+        self.processor = EventHandler()
+
+    def initialize_services(self):
+        """Initialize services that should start only on demand."""
         self.led_strip = self.app_config.initialize_led_strip()
         self.led_controller = LEDController(self.led_strip)
         self.poller = EventPoller(
             self.app_config.get_base_url(), self.app_config.api_config.request_timeout
         )
-        self.processor = EventHandler()
 
         # Register the signal handler for interrupt and termination signals
         for sig in (signal.SIGINT, signal.SIGTERM):
@@ -115,6 +119,13 @@ class StripAlertsApp:
         logging.debug(f"Signal {sig} received, initiating shutdown.")
         asyncio.create_task(self.stop_service())
 
+    def start_service_logic(self, app_instance, storage):
+        """Start the main logic of the StripAlertsApp."""
+        if not app_instance.led_controller:  # Check if services are already initialized
+            app_instance.initialize_services()
+        asyncio.create_task(app_instance.start_service())
+        storage.update(app_running=True)
+
     async def start_service(self):
         """Starts the main application."""
         logging.info("StripAlerts started.")
@@ -123,10 +134,12 @@ class StripAlertsApp:
         validate_envs.validate_env_vars()
 
         # Create and start tasks for LED animation and event processing
-        self.animation_task = asyncio.create_task(self.led_controller.run_animation_loop())
-        self.processing_task = asyncio.create_task(
-            self.processor.process_events(self.poller.poll_events(), self.led_controller)
-        )
+        if self.led_controller:
+            self.animation_task = asyncio.create_task(self.led_controller.run_animation_loop())
+        if self.poller:
+            self.processing_task = asyncio.create_task(
+                self.processor.process_events(self.poller.poll_events(), self.led_controller)
+            )
 
         await self.shutdown_event.wait()
 
@@ -138,7 +151,7 @@ class StripAlertsApp:
         """Retrieve log contents."""
         try:
             with open("app.log", "r"):
-                await LogAligner(delete_original=True).align_log_entries()
+                await LogAligner().align_log_entries()
         except FileNotFoundError:
             return "Log file not found."
 
@@ -162,18 +175,20 @@ class StripAlertsApp:
                 pass
 
         try:
-            await self.led_controller.stop_animation()
+            if self.led_controller:
+                await self.led_controller.stop_animation()
         except Exception:
             pass
 
         await self.get_logs()
         logging.info("StripAlerts stopped.")
 
-    # Optional: If you want to support standalone execution of the script
     @staticmethod
     async def run_standalone():
         app = StripAlertsApp()
-        await app.start_service()
+        dummy_storage = {}  # Create a dummy storage object
+        app.start_service_logic(app, dummy_storage)  # Start services using the unified method
+        await app.shutdown_event.wait()  # Wait for the shutdown event to be set
 
 
 setup_logging()
