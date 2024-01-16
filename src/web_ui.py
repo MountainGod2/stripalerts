@@ -4,7 +4,7 @@ import asyncio
 from dotenv import dotenv_values, load_dotenv  # Import load_dotenv
 
 # Importing classes from your application
-from stripalerts_app import StripAlertsApp
+from main import StripAlertsApp
 
 # Load environment variables from .env file
 load_dotenv()
@@ -208,23 +208,24 @@ async def update_log_content(log_label):
 @ui.page("/")
 def index():
     """Run the web UI."""
-    storage = app.storage.user
-    ui.colors(primary="#68b5f0", secondary="#202c39", accent="#f47321")
-    ui.query("body").style(
-        "background-color: #121212; color: #FFFFFF;"
-    )  # Dark background with light text
 
     # Setting up the UI elements
     with ui.card().classes("w-full q-pa-md").style(
         "max-width: 400px; margin: 0 auto; background-color: #202c39; color: white; min-height: 680px;"
     ):
+        storage = app.storage.user
+        ui.colors(primary="#68b5f0", secondary="#202c39", accent="#f47321")
+        ui.query("body").style(
+            "background-color: #121212; color: #FFFFFF;"
+        )  # Dark background with light text
+
         # Container for centering the image
         with ui.element().classes("flex flex-column items-center justify-center").style(
             "margin-top: 50px; margin: 0 auto; margin-bottom: 0px;"
         ):
-            ui.image(
-                source="https://github.com/MountainGod2/stripalerts/assets/88257202/92fe191c-ad63-4181-93e3-98ba5e2e9eb0"
-            ).style("width: 200px; height: auto; margin: 0 auto;")
+            ui.image(source="./static/header.png").style(
+                "width: 200px; height: auto; margin: 0 auto;"
+            )
         setup_configuration_stepper(storage)
         setup_control_card(storage)
         setup_log_display(storage)
