@@ -1,3 +1,4 @@
+import logging
 import os
 import asyncio
 from dotenv import dotenv_values, load_dotenv
@@ -7,12 +8,79 @@ from main import StripAlertsApp
 # Load environment variables from .env file
 load_dotenv()
 
+# Define the light and dark mode styles
+LIGHT_MODE = {
+    "background-color": "#f5f5f5",
+    "color": "#333333",
+    "button-background": "#ff6b81",
+    "button-color": "#ffffff",
+    "card-background": "#ffffff",
+    "card-color": "#333333",
+    "box-shadow": "0px 4px 8px rgba(0, 0, 0, 0.2)",
+}
+
+DARK_MODE = {
+    "background-color": "#333333",
+    "color": "#ffffff",
+    "button-background": "#ff6b81",
+    "button-color": "#ffffff",
+    "card-background": "#444444",
+    "card-color": "#ffffff",
+    "box-shadow": "0px 4px 8px rgba(255, 255, 255, 0.2)",
+}
+
+# Define a variable to track the current mode
+current_mode = LIGHT_MODE
+
 # Common styling constants
-CARD_STYLE = "max-width: 350px; margin: 0 auto; background-color: #202c39; color: white;"
-BODY_STYLE = "background-color: #121212; color: #FFFFFF;"
-BUTTON_STYLE = "margin: 0 auto;"
-LABEL_STYLE = "margin: 0 auto; text-align: center;"
+COMMON_STYLE = """
+    font-family: 'Arial', sans-serif;
+    max-width: 350px;
+    margin: 0 auto;
+    border-radius: 8px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+"""
+
+# Styles for elements
+BODY_STYLE = f"""
+    {COMMON_STYLE}
+    background-color: {current_mode['background-color']};
+    color: {current_mode['color']};
+"""
+
+CARD_STYLE = f"""
+    {COMMON_STYLE}
+    background-color: {current_mode['card-background']};
+    color: {current_mode['card-color']};
+    box-shadow: {current_mode['box-shadow']};
+"""
+
+BUTTON_STYLE = f"""
+    background-color: {current_mode['button-background']};
+    color: {current_mode['button-color']};
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+"""
+
+CENTER_STYLE = "display: flex; justify-content: center; align-items: center;"
+LABEL_STYLE = (
+    "margin: 0 auto; text-align: center; margin-top: 20px; font-size: 24px; color: #ff6b81;"
+)
 HEADER_IMAGE_STYLE = "width: 200px; height: auto; margin: 0 auto;"
+HEADER_IMAGE_PATH = "./static/header.png"  # Update with your header image path
+
+
+def show_notification(message, type="info"):
+    """
+    Show a notification to the user.
+
+    Args:
+        message (str): The message to display in the notification.
+        type (str): The type of notification ('info', 'success', 'warning', 'error').
+    """
+    ui.notify(message, type=type)
 
 
 def get_env_var(var_name, default=""):
@@ -43,7 +111,7 @@ def set_env_var(var_name, value):
         for key, val in env_vars.items():
             env_file.write(f"{key}={val}\n")
     os.environ[var_name] = value
-    print(f"Set {var_name} to {value}")
+    # print(f"Set {var_name} to {value}") # Uncomment for debugging
 
 
 class ControlFunctions:
@@ -66,7 +134,7 @@ class ControlFunctions:
             self.app_instance.start_service_logic(self.app_instance, storage)
             await self.app_instance.shutdown_event.wait()
         else:
-            print("App already running.")
+            logging.info("App is already running.")
 
     def stop_service_logic(self, storage):
         """
@@ -77,7 +145,6 @@ class ControlFunctions:
         """
         if self.app_instance:
             asyncio.create_task(self.app_instance.stop_service())
-        storage.update(app_running=False)
 
 
 def create_input(label, var_name, default=""):
@@ -151,8 +218,7 @@ def setup_configuration_stepper(storage):
     with ui.stepper().props("vertical").classes("w-full q-pa-md").style(CARD_STYLE) as stepper:
         storage.update(setup_complete=False)
         storage.update(app_running=False)
-        storage.update(show_stepper=True)
-        stepper.bind_visibility_from(storage, "show_stepper")
+        stepper.bind_visibility_from(storage, "setup_complete", value=False)
 
         with ui.step("API Configuration"):
             create_input("API Username", "USERNAME")
@@ -177,19 +243,14 @@ def setup_configuration_stepper(storage):
                 ui.button("Next", on_click=stepper.next).props("color=primary")
 
         with ui.step("Setup Complete"):
-            username = str(get_env_var("USERNAME"))
-            ui.label().bind_text_from(
-                target_object=username,
-                backward=lambda username: f"Welcome, {username}!",
-            ).style(LABEL_STYLE).classes("font-bold")
-            with ui.stepper_navigation().style(BUTTON_STYLE):
+            with ui.stepper_navigation():
                 ui.button(
                     "Complete Setup",
                     on_click=lambda: [
                         storage.update(setup_complete=True),
-                        storage.update(show_stepper=False),
+                        show_notification("Setup completed successfully!", type="success"),
                     ],
-                ).props("color=primary")
+                ).style(BUTTON_STYLE)
 
 
 def setup_control_card(storage):
@@ -201,14 +262,20 @@ def setup_control_card(storage):
     """
     with ui.card().bind_visibility_from(storage, "setup_complete").classes("w-full q-pa-md").style(
         CARD_STYLE
-    ):
+    ).style(CENTER_STYLE):
         control_functions = ControlFunctions()
+        username = str(get_env_var("USERNAME"))
+        ui.label(f"Welcome, {username}!").style(LABEL_STYLE)
+
+        # Stack the buttons vertically
         ui.button(
-            "Start StripAlerts", on_click=lambda: control_functions.start_service_logic(storage)
-        ).style(BUTTON_STYLE).props("color=primary")
+            "Start StripAlerts",
+            on_click=lambda: control_functions.start_service_logic(storage),
+        ).style(f"{BUTTON_STYLE} margin-bottom: 10px;")  # Added margin-bottom
         ui.button(
-            "Stop StripAlerts", on_click=lambda: control_functions.stop_service_logic(storage)
-        ).style(BUTTON_STYLE).bind_visibility_from(storage, "app_running").props("flat")
+            "Stop StripAlerts",
+            on_click=lambda: control_functions.stop_service_logic(storage),
+        ).style(f"{BUTTON_STYLE} margin-bottom: 10px;").bind_visibility_from(storage, "app_running")
 
 
 def setup_log_display(storage):
@@ -221,7 +288,7 @@ def setup_log_display(storage):
     with ui.card().bind_visibility_from(storage, "setup_complete").classes("w-full q-pa-md").style(
         CARD_STYLE
     ):
-        log_content = ui.label("").classes("log-display q-mb-md font-bold")
+        log_content = ui.label("").classes("log-display q-mb-md font-bold margin-top: 40px;")
 
         def update():
             asyncio.create_task(update_log_content(log_content))
@@ -252,23 +319,55 @@ async def update_log_content(log_label):
         log_label.set_text("Log file not found.")
 
 
+def toggle_dark_mode():
+    global current_mode
+
+    if current_mode == LIGHT_MODE:
+        current_mode = DARK_MODE
+    else:
+        current_mode = LIGHT_MODE
+
+    # Apply the new styles to the UI elements
+    ui.query("body").style(
+        f"background-color: {current_mode['background-color']}; color: {current_mode['color']};"
+    )
+    ui.query(".card").style(
+        f"background-color: {current_mode['card-background']}; color: {current_mode['card-color']}; box-shadow: {current_mode['box-shadow']};"
+    )
+    ui.query(".button").style(
+        f"background-color: {current_mode['button-background']}; color: {current_mode['button-color']};"
+    )
+    ui.query(".notification").style(
+        f"background-color: {current_mode['button-background']}; color: {current_mode['button-color']};"
+    )
+
+
 @ui.page("/")
 def index():
     with ui.card().classes("w-full q-pa-md").style(
-        "max-width: 400px; margin: 0 auto; background-color: #202c39; color: white; min-height: 680px;"
+        "max-width: 400px; margin: 0 auto; background-color: #ffffff; color: #333333; min-height: 680px;"
     ):
         storage = app.storage.user
-        ui.colors(primary="#68b5f0", secondary="#202c39", accent="#f47321")
+        ui.colors(primary="#ff6b81", secondary="#ffffff", accent="#ff4f63")
         ui.query("body").style(BODY_STYLE)
 
         with ui.element().classes("flex flex-column items-center justify-center").style(
             "margin-top: 50px; margin: 0 auto; margin-bottom: 0px;"
         ):
-            ui.image(source="./static/header.png").style(HEADER_IMAGE_STYLE)
+            ui.image(source=HEADER_IMAGE_PATH).style(HEADER_IMAGE_STYLE)
         setup_configuration_stepper(storage)
         setup_control_card(storage)
         setup_log_display(storage)
 
+        with ui.row().classes("w-full q-mb-md"):
+            ui.button("Toggle Dark Mode", on_click=toggle_dark_mode)
+
 
 # Run the NiceGUI app
-ui.run(title="StripAlerts", port=8080, reload=False, storage_secret="stripalerts", dark=True)
+ui.run(
+    title="StripAlerts",
+    port=8080,
+    reload=False,
+    storage_secret="stripalerts",
+    show_welcome_message=False,
+)

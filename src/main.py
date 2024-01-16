@@ -182,9 +182,10 @@ class StripAlertsApp:
                 await self.led_controller.stop_animation()
         except Exception:
             pass
+        
+        logging.info("StripAlerts stopped.")
 
         await self.get_logs()
-        logging.info("StripAlerts stopped.")
 
     @staticmethod
     async def run_standalone():

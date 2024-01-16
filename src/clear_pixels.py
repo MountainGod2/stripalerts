@@ -7,10 +7,10 @@ num_pixels = 100
 
 
 pixels = neopixel.NeoPixel(
-    pixel_pin, # type: ignore
+    pixel_pin,  # type: ignore
     num_pixels,
     brightness=0.2,
-    auto_write=False,  # type: ignore
+    auto_write=False,
 )
 
 pixels.fill((0, 0, 0))
