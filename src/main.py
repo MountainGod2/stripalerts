@@ -96,19 +96,21 @@ class StripAlertsApp:
         self.shutdown_event = asyncio.Event()
         self.animation_task = None
         self.processing_task = None
-        self.app_config = AppConfig()
+        self.app_config = None
         self.led_strip = None
         self.led_controller = None
         self.poller = None
-        self.processor = EventHandler()
+        self.processor = None
 
     def initialize_services(self):
         """Initialize services that should start only on demand."""
+        self.app_config = AppConfig()
         self.led_strip = self.app_config.initialize_led_strip()
         self.led_controller = LEDController(self.led_strip)
         self.poller = EventPoller(
             self.app_config.get_base_url(), self.app_config.api_config.request_timeout
         )
+        self.processor = EventHandler()
 
         # Register the signal handler for interrupt and termination signals
         for sig in (signal.SIGINT, signal.SIGTERM):
@@ -116,8 +118,9 @@ class StripAlertsApp:
 
     # Define a signal handler that sets the shutdown event
     def signal_handler(self, sig, frame):
-        logging.debug(f"Signal {sig} received, initiating shutdown.")
-        asyncio.create_task(self.stop_service())
+        if self.is_running() and not self.shutdown_event.is_set():
+            logging.debug(f"Signal {sig} received, initiating shutdown.")
+            asyncio.create_task(self.stop_service())
 
     def start_service_logic(self, app_instance, storage):
         """Start the main logic of the StripAlertsApp."""
@@ -136,7 +139,7 @@ class StripAlertsApp:
         # Create and start tasks for LED animation and event processing
         if self.led_controller:
             self.animation_task = asyncio.create_task(self.led_controller.run_animation_loop())
-        if self.poller:
+        if self.poller and self.processor:
             self.processing_task = asyncio.create_task(
                 self.processor.process_events(self.poller.poll_events(), self.led_controller)
             )
@@ -149,11 +152,11 @@ class StripAlertsApp:
 
     async def get_logs(self):
         """Retrieve log contents."""
-        try:
-            with open("app.log", "r"):
+        with open("app.log", "r"):
+            try:
                 await LogAligner().align_log_entries()
-        except FileNotFoundError:
-            return "Log file not found."
+            except FileNotFoundError:
+                return "Log file not found."
 
     async def stop_service(self):
         """Stops the main application."""
@@ -195,7 +198,7 @@ setup_logging()
 if __name__ == "__main__":
     # Option to run the web UI
     if "--web-ui" in sys.argv:
-        from webui import index as run_web_ui
+        from web_ui import index as run_web_ui
 
         run_web_ui()
     else:
