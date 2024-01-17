@@ -4,7 +4,12 @@ import asyncio
 import logging
 import time
 
-from adafruit_led_animation.animation import pulse, rainbow, rainbowsparkle, solid
+from adafruit_led_animation.animation import (
+    pulse,
+    rainbow,
+    rainbowsparkle,
+    solid,
+)
 from adafruit_led_animation.sequence import AnimationSequence
 
 from alert_colors_enum import AlertColor
@@ -68,7 +73,10 @@ class LEDController:
         Create the rainbow animation.
         """
         return rainbow.Rainbow(
-            self.pixels, speed=RAINBOW_SPEED, period=RAINBOW_PERIOD, name="rainbow"
+            self.pixels,
+            speed=RAINBOW_SPEED,
+            period=RAINBOW_PERIOD,
+            name="rainbow",
         )
 
     def create_sparkle_animation(self):

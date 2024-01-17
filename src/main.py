@@ -108,7 +108,8 @@ class StripAlertsApp:
         self.led_strip = self.app_config.initialize_led_strip()
         self.led_controller = LEDController(self.led_strip)
         self.poller = EventPoller(
-            self.app_config.get_base_url(), self.app_config.api_config.request_timeout
+            self.app_config.get_base_url(),
+            self.app_config.api_config.request_timeout,
         )
         self.processor = EventHandler()
 
@@ -138,10 +139,14 @@ class StripAlertsApp:
 
         # Create and start tasks for LED animation and event processing
         if self.led_controller:
-            self.animation_task = asyncio.create_task(self.led_controller.run_animation_loop())
+            self.animation_task = asyncio.create_task(
+                self.led_controller.run_animation_loop()
+            )
         if self.poller and self.processor:
             self.processing_task = asyncio.create_task(
-                self.processor.process_events(self.poller.poll_events(), self.led_controller)
+                self.processor.process_events(
+                    self.poller.poll_events(), self.led_controller
+                )
             )
 
         await self.shutdown_event.wait()
@@ -182,7 +187,7 @@ class StripAlertsApp:
                 await self.led_controller.stop_animation()
         except Exception:
             pass
-        
+
         logging.info("StripAlerts stopped.")
 
         await self.get_logs()
@@ -191,7 +196,9 @@ class StripAlertsApp:
     async def run_standalone():
         app = StripAlertsApp()
         dummy_storage = {}  # Create a dummy storage object
-        app.start_service_logic(app, dummy_storage)  # Start services using the unified method
+        app.start_service_logic(
+            app, dummy_storage
+        )  # Start services using the unified method
         await app.shutdown_event.wait()  # Wait for the shutdown event to be set
 
 

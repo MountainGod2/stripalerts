@@ -38,7 +38,9 @@ class LogAligner:
 
         max_name_length, max_level_length = self._analyze_log_lines(lines)
         output_file = Path(f"stripalerts_{datetime.now().strftime('%Y%m%d')}.log")
-        await self._write_aligned_logs(lines, max_name_length, max_level_length, output_file)
+        await self._write_aligned_logs(
+            lines, max_name_length, max_level_length, output_file
+        )
 
         if self.delete_original:
             self._delete_file(self.file_path)
@@ -62,7 +64,9 @@ class LogAligner:
                 )
         return max_name_length, max_level_length
 
-    async def _write_aligned_logs(self, lines, max_name_length, max_level_length, output_file):
+    async def _write_aligned_logs(
+        self, lines, max_name_length, max_level_length, output_file
+    ):
         try:
             async with aiofiles.open(output_file, mode="w", encoding="utf-8") as file:
                 for line in lines:

@@ -44,7 +44,9 @@ SPARKLE_BASE_BRIGHTNESS = 0.5  # Base brightness of sparkle animation
 
 # Pulse alert parameters (used for color alerts)
 alert_config = AlertConfig()
-PULSE_PERIOD = alert_config.alert_duration * (2 // 3)  # Time in seconds to complete a pulse cycle
+PULSE_PERIOD = alert_config.alert_duration * (
+    2 // 3
+)  # Time in seconds to complete a pulse cycle
 PULSE_PERIOD = 1 if PULSE_PERIOD < 1 else PULSE_PERIOD  # Minimum pulse period is 1 second
 PULSE_SPEED = 0.01  # Speed of pulse animation
 

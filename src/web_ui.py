@@ -8,29 +8,30 @@ from main import StripAlertsApp
 # Load environment variables from .env file
 load_dotenv()
 
-# Define the light and dark mode styles
-LIGHT_MODE = {
-    "background-color": "#f5f5f5",
-    "color": "#333333",
-    "button-background": "#ff6b81",
-    "button-color": "#ffffff",
-    "card-background": "#ffffff",
-    "card-color": "#333333",
-    "box-shadow": "0px 4px 8px rgba(0, 0, 0, 0.2)",
+# Define theme styles
+THEMES = {
+    "light": {
+        "background-color": "#f5f5f5",
+        "color": "#333333",
+        "button-background": "#ff6b81",
+        "button-color": "#ffffff",
+        "card-background": "#ffffff",
+        "card-color": "#333333",
+        "box-shadow": "0px 4px 8px rgba(0, 0, 0, 0.2)",
+        "accent-color": "#ff4f63",  # Define an accent color
+    },
+    "dark": {
+        "background-color": "#333333",
+        "color": "#ffffff",
+        "button-background": "#ff6b81",
+        "button-color": "#ffffff",
+        "card-background": "#444444",
+        "card-color": "#ffffff",
+        "box-shadow": "0px 4px 8px rgba(255, 255, 255, 0.2)",
+        "accent-color": "#ff4f63",  # Define an accent color
+    },
 }
-
-DARK_MODE = {
-    "background-color": "#333333",
-    "color": "#ffffff",
-    "button-background": "#ff6b81",
-    "button-color": "#ffffff",
-    "card-background": "#444444",
-    "card-color": "#ffffff",
-    "box-shadow": "0px 4px 8px rgba(255, 255, 255, 0.2)",
-}
-
-# Define a variable to track the current mode
-current_mode = LIGHT_MODE
+current_theme = "light"
 
 # Common styling constants
 COMMON_STYLE = """
@@ -41,23 +42,9 @@ COMMON_STYLE = """
     transition: background-color 0.3s ease, transform 0.2s ease;
 """
 
-# Styles for elements
-BODY_STYLE = f"""
-    {COMMON_STYLE}
-    background-color: {current_mode['background-color']};
-    color: {current_mode['color']};
-"""
-
-CARD_STYLE = f"""
-    {COMMON_STYLE}
-    background-color: {current_mode['card-background']};
-    color: {current_mode['card-color']};
-    box-shadow: {current_mode['box-shadow']};
-"""
-
-BUTTON_STYLE = f"""
-    background-color: {current_mode['button-background']};
-    color: {current_mode['button-color']};
+BUTTON_STYLE = """
+    background-color: #ff6b81;
+    color: #ffffff;
     border: none;
     padding: 10px 20px;
     border-radius: 25px;
@@ -65,11 +52,9 @@ BUTTON_STYLE = f"""
 """
 
 CENTER_STYLE = "display: flex; justify-content: center; align-items: center;"
-LABEL_STYLE = (
-    "margin: 0 auto; text-align: center; margin-top: 20px; font-size: 24px; color: #ff6b81;"
-)
+LABEL_STYLE = "margin: 0 auto; text-align: center; margin-top: 20px; font-size: 24px; color: #ff6b81;"
 HEADER_IMAGE_STYLE = "width: 200px; height: auto; margin: 0 auto;"
-HEADER_IMAGE_PATH = "./static/header.png"  # Update with your header image path
+HEADER_IMAGE_PATH = "./static/header.png"
 
 
 def show_notification(message, type="info"):
@@ -114,6 +99,18 @@ def set_env_var(var_name, value):
     # print(f"Set {var_name} to {value}") # Uncomment for debugging
 
 
+class SettingsValidator:
+    def __init__(self):
+        self.settings_validated = False
+
+    def validate_settings(self, storage):
+        """
+        Validate the settings for the StripAlerts app.
+        """
+        self.settings_validated = True
+        storage.update(settings_validated=True)
+
+
 class ControlFunctions:
     def __init__(self):
         self.app_instance = None
@@ -132,6 +129,7 @@ class ControlFunctions:
             storage.update(app_running=True)
             self.app_instance = StripAlertsApp()
             self.app_instance.start_service_logic(self.app_instance, storage)
+            show_notification("StripAlerts started", type="positive")
             await self.app_instance.shutdown_event.wait()
         else:
             logging.info("App is already running.")
@@ -145,6 +143,8 @@ class ControlFunctions:
         """
         if self.app_instance:
             asyncio.create_task(self.app_instance.stop_service())
+            show_notification("StripAlerts stopped", type="negative")
+            storage.update(app_running=False)
 
 
 def create_input(label, var_name, default=""):
@@ -215,18 +215,20 @@ def setup_configuration_stepper(storage):
     Args:
         storage (dict): The storage dictionary for NiceGUI.
     """
-    with ui.stepper().props("vertical").classes("w-full q-pa-md").style(CARD_STYLE) as stepper:
+    with ui.stepper().props("vertical").classes("w-full q-pa-md").style(
+        COMMON_STYLE
+    ) as stepper:
         storage.update(setup_complete=False)
         storage.update(app_running=False)
         stepper.bind_visibility_from(storage, "setup_complete", value=False)
 
-        with ui.step("API Configuration"):
+        with ui.step("Configure API Credentials"):
             create_input("API Username", "USERNAME")
             create_input("API Token", "TOKEN")
             with ui.stepper_navigation().classes("center-container"):
                 ui.button("Next", on_click=stepper.next).props("color=primary")
 
-        with ui.step("LED Configuration"):
+        with ui.step("Configure LED Strip"):
             create_input("LED Pin", "LED_PIN")
             create_number("LED Count", "LED_COUNT", 5)
             create_slider("LED Brightness", "LED_BRIGHTNESS", 0.1)
@@ -234,23 +236,28 @@ def setup_configuration_stepper(storage):
                 ui.button("Back", on_click=stepper.previous).props("flat")
                 ui.button("Next", on_click=stepper.next).props("color=primary")
 
-        with ui.step("Alerts Configuration"):
+        with ui.step("Configure Alert Settings"):
             create_number("Tokens for Color Alert", "TOKENS_FOR_COLOR_ALERT", 35)
             create_number("Alert duration (seconds)", "ALERT_DURATION", 3)
             create_number("User Color Duration (seconds)", "COLOR_DURATION", 600)
             with ui.stepper_navigation().classes("center-container"):
                 ui.button("Back", on_click=stepper.previous).props("flat")
-                ui.button("Next", on_click=stepper.next).props("color=primary")
-
-        with ui.step("Setup Complete"):
-            with ui.stepper_navigation():
+                ui.button(
+                    "Next",
+                    on_click=stepper.next,  # Add validation logic
+                )
+        with ui.step("Start StripAlerts"):
+            ui.label("Settings validated.")
+            with ui.stepper_navigation().classes("center-container"):
                 ui.button(
                     "Complete Setup",
                     on_click=lambda: [
                         storage.update(setup_complete=True),
-                        show_notification("Setup completed successfully!", type="success"),
+                        show_notification(
+                            "Setup completed successfully!", type="positive"
+                        ),
                     ],
-                ).style(BUTTON_STYLE)
+                )
 
 
 def setup_control_card(storage):
@@ -260,9 +267,9 @@ def setup_control_card(storage):
     Args:
         storage (dict): The storage dictionary for NiceGUI.
     """
-    with ui.card().bind_visibility_from(storage, "setup_complete").classes("w-full q-pa-md").style(
-        CARD_STYLE
-    ).style(CENTER_STYLE):
+    with ui.card().bind_visibility_from(storage, "setup_complete").classes(
+        "w-full q-pa-md"
+    ).style(COMMON_STYLE).style(CENTER_STYLE):
         control_functions = ControlFunctions()
         username = str(get_env_var("USERNAME"))
         ui.label(f"Welcome, {username}!").style(LABEL_STYLE)
@@ -275,7 +282,9 @@ def setup_control_card(storage):
         ui.button(
             "Stop StripAlerts",
             on_click=lambda: control_functions.stop_service_logic(storage),
-        ).style(f"{BUTTON_STYLE} margin-bottom: 10px;").bind_visibility_from(storage, "app_running")
+        ).style(f"{BUTTON_STYLE} margin-bottom: 10px;").bind_visibility_from(
+            storage, "app_running"
+        )
 
 
 def setup_log_display(storage):
@@ -285,10 +294,12 @@ def setup_log_display(storage):
     Args:
         storage (dict): The storage dictionary for NiceGUI.
     """
-    with ui.card().bind_visibility_from(storage, "setup_complete").classes("w-full q-pa-md").style(
-        CARD_STYLE
-    ):
-        log_content = ui.label("").classes("log-display q-mb-md font-bold margin-top: 40px;")
+    with ui.card().bind_visibility_from(storage, "setup_complete").classes(
+        "w-full q-pa-md"
+    ).style(COMMON_STYLE):
+        log_content = ui.label("").classes(
+            "log-display q-mb-md font-bold margin-top: 40px;"
+        )
 
         def update():
             asyncio.create_task(update_log_content(log_content))
@@ -308,7 +319,9 @@ async def update_log_content(log_label):
             log_lines = log_file.readlines()
 
         info_messages = [
-            line.split(" - INFO - ")[-1].strip() for line in log_lines if " - INFO - " in line
+            line.split(" - INFO - ")[-1].strip()
+            for line in log_lines
+            if " - INFO - " in line
         ]
 
         latest_message = info_messages[-1] if info_messages else "Waiting for startup..."
@@ -319,48 +332,57 @@ async def update_log_content(log_label):
         log_label.set_text("Log file not found.")
 
 
-def toggle_dark_mode():
-    global current_mode
-
-    if current_mode == LIGHT_MODE:
-        current_mode = DARK_MODE
-    else:
-        current_mode = LIGHT_MODE
-
-    # Apply the new styles to the UI elements
+def apply_theme():
+    """Apply the current theme to the UI elements."""
+    theme = THEMES[current_theme]
     ui.query("body").style(
-        f"background-color: {current_mode['background-color']}; color: {current_mode['color']};"
+        f"background-color: {theme['background-color']}; color: {theme['color']};"
     )
     ui.query(".card").style(
-        f"background-color: {current_mode['card-background']}; color: {current_mode['card-color']}; box-shadow: {current_mode['box-shadow']};"
+        f"background-color: {theme['card-background']}; color: {theme['card-color']}; box-shadow: {theme['box-shadow']};"
     )
     ui.query(".button").style(
-        f"background-color: {current_mode['button-background']}; color: {current_mode['button-color']};"
+        f"background-color: {theme['button-background']}; color: {theme['button-color']};"
     )
-    ui.query(".notification").style(
-        f"background-color: {current_mode['button-background']}; color: {current_mode['button-color']};"
-    )
+
+
+def toggle_dark_mode():
+    """Toggle between light and dark mode."""
+    global current_theme
+    current_theme = "dark" if current_theme == "light" else "light"
+    apply_theme()
 
 
 @ui.page("/")
 def index():
-    with ui.card().classes("w-full q-pa-md").style(
-        "max-width: 400px; margin: 0 auto; background-color: #ffffff; color: #333333; min-height: 680px;"
-    ):
-        storage = app.storage.user
-        ui.colors(primary="#ff6b81", secondary="#ffffff", accent="#ff4f63")
-        ui.query("body").style(BODY_STYLE)
+    storage = app.storage.user
+    apply_theme()  # Apply the current theme
 
-        with ui.element().classes("flex flex-column items-center justify-center").style(
-            "margin-top: 50px; margin: 0 auto; margin-bottom: 0px;"
-        ):
-            ui.image(source=HEADER_IMAGE_PATH).style(HEADER_IMAGE_STYLE)
+    with ui.element().classes("flex flex-column items-center justify-center").style(
+        "margin-top: 50px; margin: 0 auto; margin-bottom: 0px;"
+    ):
+        ui.image(source="./static/header.png").style(
+            "width: 200px; height: auto; margin: 0 auto;"
+        )  # Header image path consolidated here
+
+    with ui.card().classes("w-full q-pa-md").style(
+        "max-width: 500px; margin: 0 auto; background-color: #ffffff; color: #333333; border-radius: 8px;"
+    ):
+        ui.colors(
+            primary="#ff6b81",
+            secondary="#ffffff",
+            accent=THEMES[current_theme]["accent-color"],
+        )  # Use the accent color
+        ui.query("body").style(COMMON_STYLE)
+
         setup_configuration_stepper(storage)
         setup_control_card(storage)
         setup_log_display(storage)
 
-        with ui.row().classes("w-full q-mb-md"):
-            ui.button("Toggle Dark Mode", on_click=toggle_dark_mode)
+    with ui.row().classes("w-full q-mb-md"):
+        ui.switch("Toggle Dark Mode", on_change=lambda e: toggle_dark_mode()).style(
+            "display: flex; justify-content: center; align-items: center;"
+        )
 
 
 # Run the NiceGUI app
