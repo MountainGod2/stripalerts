@@ -13,42 +13,46 @@ THEMES = {
     "light": {
         "background-color": "#f5f5f5",
         "color": "#333333",
-        "button-background": "#ff6b81",
         "button-color": "#ffffff",
         "card-background": "#ffffff",
         "card-color": "#333333",
         "box-shadow": "0px 4px 8px rgba(0, 0, 0, 0.2)",
-        "accent-color": "#ff4f63",  # Define an accent color
+        "button-background": "#ff91a4",  # Lighter pink
+        "accent-color": "#ffb6c1",  # Soft pink
     },
     "dark": {
         "background-color": "#333333",
         "color": "#ffffff",
-        "button-background": "#ff6b81",
         "button-color": "#ffffff",
         "card-background": "#444444",
         "card-color": "#ffffff",
         "box-shadow": "0px 4px 8px rgba(255, 255, 255, 0.2)",
-        "accent-color": "#ff4f63",  # Define an accent color
+        "button-background": "#ff91a4",  # Lighter pink even in dark mode
+        "accent-color": "#ffb6c1",  # Soft pink in dark mode
     },
 }
 current_theme = "light"
 
-# Common styling constants
 COMMON_STYLE = """
     font-family: 'Arial', sans-serif;
     max-width: 350px;
     margin: 0 auto;
     border-radius: 8px;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    transition: all 0.3s ease;
 """
 
 BUTTON_STYLE = """
-    background-color: #ff6b81;
+    background-color: #ff91a4;
     color: #ffffff;
     border: none;
     padding: 10px 20px;
-    border-radius: 25px;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    border-radius: 50px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.1);
+    &:hover {
+        background-color: #ff6b81;
+        box-shadow: 0 6px 12px 0 rgba(0,0,0,0.2);
+    }
 """
 
 CENTER_STYLE = "display: flex; justify-content: center; align-items: center;"
@@ -363,7 +367,7 @@ def index():
     ):
         ui.image(source="./static/header.png").style(
             "width: 200px; height: auto; margin: 0 auto;"
-        )  # Header image path consolidated here
+        )
 
     with ui.card().classes("w-full q-pa-md").style(
         "max-width: 500px; margin: 0 auto; background-color: #ffffff; color: #333333; border-radius: 8px;"
