@@ -53,7 +53,9 @@ class EventPoller:
                             self.logger.debug(f"Server error: Status {response.status}")
                             await self.handle_error(server_error=True)
                         else:
-                            self.logger.error(f"Error fetching events: Status {response.status}")
+                            self.logger.error(
+                                f"Error fetching events: Status {response.status}"
+                            )
                             await self.handle_error()
 
                 except aiohttp.ClientError as error:

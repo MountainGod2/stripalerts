@@ -60,7 +60,9 @@ class EventHandler:
             message = self.clean_message(tip_event.tip.message)
             color = AlertColor.from_string(message)
 
-            self.logger.debug(f"Tip from {username}: {tokens} tokens. Message: '{message}'")
+            self.logger.debug(
+                f"Tip from {username}: {tokens} tokens. Message: '{message}'"
+            )
 
             if tokens >= self.alert_config.tokens_for_color_alert and color:
                 await led_controller.trigger_color_alert(color)
