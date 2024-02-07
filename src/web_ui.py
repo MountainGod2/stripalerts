@@ -1,12 +1,14 @@
+import asyncio
 import logging
 import os
-import asyncio
+
 from dotenv import dotenv_values, load_dotenv
 from nicegui import app, ui
+
 from main import StripAlertsApp
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(dotenv_path="./.env")
 
 # Define theme styles
 THEMES = {
@@ -61,15 +63,16 @@ HEADER_IMAGE_STYLE = "width: 200px; height: auto; margin: 0 auto;"
 HEADER_IMAGE_PATH = "./static/header.png"
 
 
-def show_notification(message, type="info"):
+def show_notification(message, notification_type="info"):
     """
     Show a notification to the user.
 
     Args:
         message (str): The message to display in the notification.
-        type (str): The type of notification ('info', 'success', 'warning', 'error').
+        type (literal['info', 'positive', 'negative']): The type of notification to display.
     """
-    ui.notify(message, type=type)
+
+    ui.notification(message, type=notification_type)  # type: ignore
 
 
 def get_env_var(var_name, default=""):
@@ -133,7 +136,7 @@ class ControlFunctions:
             storage.update(app_running=True)
             self.app_instance = StripAlertsApp()
             self.app_instance.start_service_logic(self.app_instance, storage)
-            show_notification("StripAlerts started", type="positive")
+            show_notification("StripAlerts started", notification_type="positive")
             await self.app_instance.shutdown_event.wait()
         else:
             logging.info("App is already running.")
@@ -147,7 +150,7 @@ class ControlFunctions:
         """
         if self.app_instance:
             asyncio.create_task(self.app_instance.stop_service())
-            show_notification("StripAlerts stopped", type="negative")
+            show_notification("StripAlerts stopped", notification_type="negative")
             storage.update(app_running=False)
 
 
@@ -258,7 +261,7 @@ def setup_configuration_stepper(storage):
                     on_click=lambda: [
                         storage.update(setup_complete=True),
                         show_notification(
-                            "Setup completed successfully!", type="positive"
+                            "Setup completed successfully!", notification_type="positive"
                         ),
                     ],
                 )
@@ -395,5 +398,5 @@ ui.run(
     port=8080,
     reload=False,
     storage_secret="stripalerts",
-    show_welcome_message=False,
+    # show_welcome_message=False,
 )
