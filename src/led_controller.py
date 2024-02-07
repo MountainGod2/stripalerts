@@ -4,18 +4,11 @@ import asyncio
 import logging
 import time
 
-from adafruit_led_animation.animation import (
-    pulse,
-    rainbow,
-    rainbowsparkle,
-    solid,
-)
+from adafruit_led_animation.animation import pulse, rainbow, rainbowsparkle, solid
 from adafruit_led_animation.sequence import AnimationSequence
 
 from alert_colors_enum import AlertColor
 from constants import (
-    AlertConfig,
-    LEDConfig,
     ANIMATION_SPEED,
     PULSE_PERIOD,
     PULSE_SPEED,
@@ -26,6 +19,8 @@ from constants import (
     SPARKLE_NUM_SPARKLES,
     SPARKLE_PERIOD,
     SPARKLE_SPEED,
+    AlertConfig,
+    LEDConfig,
 )
 
 

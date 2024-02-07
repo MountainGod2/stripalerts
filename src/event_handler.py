@@ -1,5 +1,7 @@
-from pydantic import BaseModel, ValidationError
 import logging
+
+from pydantic import BaseModel, ValidationError
+
 from alert_colors_enum import AlertColor
 from constants import AlertConfig
 

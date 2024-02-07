@@ -12,7 +12,7 @@ import sys
 import board
 import neopixel
 
-from constants import API_TIMEOUT, LEDConfig, APIConfig
+from constants import API_TIMEOUT, APIConfig, LEDConfig
 from event_handler import EventHandler
 from event_poller import EventPoller
 from led_controller import LEDController
