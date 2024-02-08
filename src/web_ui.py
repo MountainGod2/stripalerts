@@ -7,9 +7,6 @@ from nicegui import app, ui
 
 from main import StripAlertsApp
 
-# Load environment variables from .env file
-load_dotenv(dotenv_path="./.env")
-
 # Define theme styles
 THEMES = {
     "light": {
@@ -33,7 +30,8 @@ THEMES = {
         "accent-color": "#ffb6c1",  # Soft pink in dark mode
     },
 }
-current_theme = "light"
+
+CURRENT_THEME = "light"
 
 COMMON_STYLE = """
     font-family: 'Arial', sans-serif;
@@ -61,6 +59,9 @@ CENTER_STYLE = "display: flex; justify-content: center; align-items: center;"
 LABEL_STYLE = "margin: 0 auto; text-align: center; margin-top: 20px; font-size: 24px; color: #ff6b81;"
 HEADER_IMAGE_STYLE = "width: 200px; height: auto; margin: 0 auto;"
 HEADER_IMAGE_PATH = "./static/header.png"
+
+# Load environment variables from .env file
+load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
 
 def show_notification(message, notification_type="info"):
@@ -97,13 +98,49 @@ def set_env_var(var_name, value):
         var_name (str): The name of the environment variable to set.
         value (str): The value to set for the environment variable.
     """
-    env_vars = dotenv_values(".env")
+    env_file_path = os.path.join(os.getcwd(), ".env")
+    env_vars = dotenv_values(env_file_path)
+
+    # Update or add the new key-value pair
     env_vars[var_name] = value
-    with open(".env", "w") as env_file:
+
+    # Write the updated key-value pairs to the .env file
+    with open(env_file_path, "w") as env_file:
         for key, val in env_vars.items():
             env_file.write(f"{key}={val}\n")
+
     os.environ[var_name] = value
-    # print(f"Set {var_name} to {value}") # Uncomment for debugging
+
+
+def get_user_settings():
+    """
+    Get the user settings from the environment variables.
+
+    Returns:
+        dict: A dictionary containing the user settings.
+    """
+    try:
+        return {
+            "username": get_env_var("USERNAME"),
+            "token": get_env_var("TOKEN"),
+            "led_pin": str(get_env_var("LED_PIN")),
+            "led_count": int(get_env_var("LED_COUNT")),
+            "led_brightness": float(get_env_var("LED_BRIGHTNESS")),
+            "tokens_for_color_alert": int(get_env_var("TOKENS_FOR_COLOR_ALERT")),
+            "alert_duration": int(get_env_var("ALERT_DURATION")),
+            "color_duration": int(get_env_var("COLOR_DURATION")),
+        }
+    except ValueError:
+        return {
+            "username": "",
+            "token": "",
+            "led_pin": "",
+            "led_count": 0,
+            "led_brightness": 0.1,
+            "tokens_for_color_alert": 35,
+            "alert_duration": 3,
+            "color_duration": 600,
+        }
 
 
 class SettingsValidator:
@@ -278,8 +315,7 @@ def setup_control_card(storage):
         "w-full q-pa-md"
     ).style(COMMON_STYLE).style(CENTER_STYLE):
         control_functions = ControlFunctions()
-        username = str(get_env_var("USERNAME"))
-        ui.label(f"Welcome, {username}!").style(LABEL_STYLE)
+        ui.label(f"Welcome, {get_user_settings()['username']}").style(LABEL_STYLE)
 
         # Stack the buttons vertically
         ui.button(
@@ -341,7 +377,7 @@ async def update_log_content(log_label):
 
 def apply_theme():
     """Apply the current theme to the UI elements."""
-    theme = THEMES[current_theme]
+    theme = THEMES[CURRENT_THEME]
     ui.query("body").style(
         f"background-color: {theme['background-color']}; color: {theme['color']};"
     )
@@ -355,8 +391,8 @@ def apply_theme():
 
 def toggle_dark_mode():
     """Toggle between light and dark mode."""
-    global current_theme
-    current_theme = "dark" if current_theme == "light" else "light"
+    global CURRENT_THEME
+    CURRENT_THEME = "dark" if CURRENT_THEME == "light" else "light"
     apply_theme()
 
 
@@ -378,7 +414,7 @@ def index():
         ui.colors(
             primary="#ff6b81",
             secondary="#ffffff",
-            accent=THEMES[current_theme]["accent-color"],
+            accent=THEMES[CURRENT_THEME]["accent-color"],
         )  # Use the accent color
         ui.query("body").style(COMMON_STYLE)
 
