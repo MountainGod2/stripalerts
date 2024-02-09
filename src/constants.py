@@ -2,9 +2,9 @@
 import os
 from dataclasses import dataclass
 
-import dotenv
+from dotenv import load_dotenv
 
-dotenv.load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
 
 @dataclass
