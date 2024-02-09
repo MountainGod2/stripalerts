@@ -17,7 +17,7 @@ class LEDConfig:
 @dataclass
 class AlertConfig:
     tokens_for_color_alert: int = int(os.getenv("TOKENS_FOR_COLOR_ALERT", "35"))
-    alert_duration: int = int(os.getenv("ALERT_DURATION", "60"))
+    alert_duration: int = int(os.getenv("ALERT_DURATION", "3"))
     color_duration: int = int(os.getenv("COLOR_DURATION", "600"))
 
 
@@ -45,7 +45,7 @@ SPARKLE_BASE_BRIGHTNESS = 0.5  # Base brightness of sparkle animation
 # Pulse alert parameters (used for color alerts)
 alert_config = AlertConfig()
 PULSE_PERIOD = alert_config.alert_duration * (
-    2 // 3
+    2 // 3  # Always complete pulse cycle within 2/3 of alert duration
 )  # Time in seconds to complete a pulse cycle
 PULSE_PERIOD = 1 if PULSE_PERIOD < 1 else PULSE_PERIOD  # Minimum pulse period is 1 second
 PULSE_SPEED = 0.01  # Speed of pulse animation
