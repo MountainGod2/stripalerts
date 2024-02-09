@@ -64,6 +64,30 @@ HEADER_IMAGE_PATH = "./static/header.png"
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
 
+# Function to apply theme
+def apply_theme():
+    """Apply the current theme to the UI elements."""
+    theme = THEMES[CURRENT_THEME]
+    ui.query("body").style(
+        f"background-color: {theme['background-color']}; color: {theme['color']};"
+    )
+    ui.query(".card").style(
+        f"background-color: {theme['card-background']}; color: {theme['card-color']}; box-shadow: {theme['box-shadow']};"
+    )
+    ui.query(".button").style(
+        f"background-color: {theme['button-background']}; color: {theme['button-color']};"
+    )
+
+
+# Function to toggle dark mode
+def toggle_dark_mode():
+    """Toggle between light and dark mode."""
+    global CURRENT_THEME
+    CURRENT_THEME = "dark" if CURRENT_THEME == "light" else "light"
+    apply_theme()
+
+
+# Function to show notification
 def show_notification(message, notification_type="info"):
     """
     Show a notification to the user.
@@ -73,23 +97,72 @@ def show_notification(message, notification_type="info"):
         type (literal['info', 'positive', 'negative']): The type of notification to display.
     """
 
-    ui.notification(message, type=notification_type)  # type: ignore
 
-
-def get_env_var(var_name, default=""):
+# Function to create input element
+def create_input(label, var_name, default=""):
     """
-    Get environment variable with a fallback value if not found.
+    Create an input element with a label and bind it to an environment variable.
 
     Args:
-        var_name (str): The name of the environment variable to retrieve.
-        default (str): The default value to return if the variable is not found.
+        label (str): The label for the input element.
+        var_name (str): The name of the environment variable to bind.
+        default (str): The default value for the input element.
 
     Returns:
-        str: The value of the environment variable or the default value if not found.
+        nicegui.ui.Input: The created input element.
     """
-    return os.getenv(var_name, default)
+    return ui.input(
+        label,
+        value=os.getenv(var_name, default),
+        on_change=lambda e: set_env_var(var_name, e.value),
+    ).classes("w-full q-mb-md")
 
 
+# Function to create number input element
+def create_number(label, var_name, default=0):
+    """
+    Create a number input element with a label and bind it to an environment variable.
+
+    Args:
+        label (str): The label for the number input element.
+        var_name (str): The name of the environment variable to bind.
+        default (int): The default value for the number input element.
+
+    Returns:
+        nicegui.ui.Number: The created number input element.
+    """
+    return ui.number(
+        label,
+        value=int(os.getenv(var_name, default)),
+        on_change=lambda e: set_env_var(var_name, str(int(e.value))),
+    ).classes("w-full q-mb-md")
+
+
+# Function to create slider element
+def create_slider(label, var_name, default=0.1):
+    """
+    Create a slider element with a label and bind it to an environment variable.
+
+    Args:
+        label (str): The label for the slider element.
+        var_name (str): The name of the environment variable to bind.
+        default (float): The default value for the slider element.
+
+    Returns:
+        tuple: A tuple containing the label and slider elements.
+    """
+    slider_label = ui.label(label)
+    slider = ui.slider(
+        value=float(os.getenv(var_name, str(default))),
+        min=0.1,
+        max=1,
+        step=0.01,
+        on_change=lambda e: set_env_var(var_name, str(e.value)),
+    ).classes("w-full q-mb-md")
+    return slider_label, slider
+
+
+# Function to set environment variable
 def set_env_var(var_name, value):
     """
     Write an environment variable to the .env file and update the environment.
@@ -112,6 +185,7 @@ def set_env_var(var_name, value):
     os.environ[var_name] = value
 
 
+# Function to get user settings
 def get_user_settings():
     """
     Get the user settings from the environment variables.
@@ -121,14 +195,14 @@ def get_user_settings():
     """
     try:
         return {
-            "username": get_env_var("USERNAME"),
-            "token": get_env_var("TOKEN"),
-            "led_pin": str(get_env_var("LED_PIN")),
-            "led_count": int(get_env_var("LED_COUNT")),
-            "led_brightness": float(get_env_var("LED_BRIGHTNESS")),
-            "tokens_for_color_alert": int(get_env_var("TOKENS_FOR_COLOR_ALERT")),
-            "alert_duration": int(get_env_var("ALERT_DURATION")),
-            "color_duration": int(get_env_var("COLOR_DURATION")),
+            "username": os.getenv("USERNAME", ""),
+            "token": os.getenv("TOKEN", ""),
+            "led_pin": str(os.getenv("LED_PIN", "")),
+            "led_count": int(os.getenv("LED_COUNT", 0)),
+            "led_brightness": float(os.getenv("LED_BRIGHTNESS", 0.1)),
+            "tokens_for_color_alert": int(os.getenv("TOKENS_FOR_COLOR_ALERT", 35)),
+            "alert_duration": int(os.getenv("ALERT_DURATION", 3)),
+            "color_duration": int(os.getenv("COLOR_DURATION", 600)),
         }
     except ValueError:
         return {
@@ -189,67 +263,6 @@ class ControlFunctions:
             asyncio.create_task(self.app_instance.stop_service())
             show_notification("StripAlerts stopped", notification_type="negative")
             storage.update(app_running=False)
-
-
-def create_input(label, var_name, default=""):
-    """
-    Create an input element with a label and bind it to an environment variable.
-
-    Args:
-        label (str): The label for the input element.
-        var_name (str): The name of the environment variable to bind.
-        default (str): The default value for the input element.
-
-    Returns:
-        nicegui.ui.Input: The created input element.
-    """
-    return ui.input(
-        label,
-        value=get_env_var(var_name, default),
-        on_change=lambda e: set_env_var(var_name, e.value),
-    ).classes("w-full q-mb-md")
-
-
-def create_number(label, var_name, default=0):
-    """
-    Create a number input element with a label and bind it to an environment variable.
-
-    Args:
-        label (str): The label for the number input element.
-        var_name (str): The name of the environment variable to bind.
-        default (int): The default value for the number input element.
-
-    Returns:
-        nicegui.ui.Number: The created number input element.
-    """
-    return ui.number(
-        label,
-        value=int(get_env_var(var_name, str(default))),
-        on_change=lambda e: set_env_var(var_name, str(int(e.value))),
-    ).classes("w-full q-mb-md")
-
-
-def create_slider(label, var_name, default=0.1):
-    """
-    Create a slider element with a label and bind it to an environment variable.
-
-    Args:
-        label (str): The label for the slider element.
-        var_name (str): The name of the environment variable to bind.
-        default (float): The default value for the slider element.
-
-    Returns:
-        tuple: A tuple containing the label and slider elements.
-    """
-    slider_label = ui.label(label)
-    slider = ui.slider(
-        value=float(get_env_var(var_name, str(default))),
-        min=0.1,
-        max=1,
-        step=0.01,
-        on_change=lambda e: set_env_var(var_name, str(e.value)),
-    ).classes("w-full q-mb-md")
-    return slider_label, slider
 
 
 def setup_configuration_stepper(storage):
@@ -375,57 +388,43 @@ async def update_log_content(log_label):
         log_label.set_text("Log file not found.")
 
 
-def apply_theme():
-    """Apply the current theme to the UI elements."""
-    theme = THEMES[CURRENT_THEME]
-    ui.query("body").style(
-        f"background-color: {theme['background-color']}; color: {theme['color']};"
-    )
-    ui.query(".card").style(
-        f"background-color: {theme['card-background']}; color: {theme['card-color']}; box-shadow: {theme['box-shadow']};"
-    )
-    ui.query(".button").style(
-        f"background-color: {theme['button-background']}; color: {theme['button-color']};"
-    )
-
-
-def toggle_dark_mode():
-    """Toggle between light and dark mode."""
-    global CURRENT_THEME
-    CURRENT_THEME = "dark" if CURRENT_THEME == "light" else "light"
-    apply_theme()
+ui.query(".nicegui-content").classes("p-0")
 
 
 @ui.page("/")
 def index():
     storage = app.storage.user
     apply_theme()  # Apply the current theme
+    with ui.card().classes("root-card w-full q-pa-md").style(
+        "margin: 0px auto 0 auto; background-color: #ffffff; color: #333333; border-radius: 8px; display: flex; justify-content: center; align-items: center; width: 384px;"
+    ) as root_card:
+        with ui.element().classes("flex flex-column items-center justify-center").style(
+            "margin-top: 50px; margin: 0 auto; margin-bottom: 0px;"
+        ):
+            ui.image(source="./static/header.png").style(
+                "width: 200px; height: auto; margin: 0 auto;"
+            )
 
-    with ui.element().classes("flex flex-column items-center justify-center").style(
-        "margin-top: 50px; margin: 0 auto; margin-bottom: 0px;"
-    ):
-        ui.image(source="./static/header.png").style(
-            "width: 200px; height: auto; margin: 0 auto;"
-        )
+            with ui.card().classes("w-full q-pa-md no-shadow border-[0px]").style(
+                "margin: 0 auto; background-color: #ffffff; color: #333333;"
+            ):
+                ui.colors(
+                    primary="#ff6b81",
+                    secondary="#ffffff",
+                    accent=THEMES[CURRENT_THEME]["accent-color"],
+                )  # Use the accent color
+                ui.query("body").style(COMMON_STYLE)
 
-    with ui.card().classes("w-full q-pa-md").style(
-        "max-width: 500px; margin: 0 auto; background-color: #ffffff; color: #333333; border-radius: 8px;"
-    ):
-        ui.colors(
-            primary="#ff6b81",
-            secondary="#ffffff",
-            accent=THEMES[CURRENT_THEME]["accent-color"],
-        )  # Use the accent color
-        ui.query("body").style(COMMON_STYLE)
+                setup_configuration_stepper(storage)
+                setup_control_card(storage)
+                setup_log_display(storage)
 
-        setup_configuration_stepper(storage)
-        setup_control_card(storage)
-        setup_log_display(storage)
+            with ui.row().classes("w-full q-mb-md").style("justify-content: center;"):
+                ui.switch(
+                    "Toggle Dark Mode", on_change=lambda e: toggle_dark_mode()
+                ).style("display: flex; justify-content: center; align-items: center;")
 
-    with ui.row().classes("w-full q-mb-md"):
-        ui.switch("Toggle Dark Mode", on_change=lambda e: toggle_dark_mode()).style(
-            "display: flex; justify-content: center; align-items: center;"
-        )
+    return root_card
 
 
 # Run the NiceGUI app
