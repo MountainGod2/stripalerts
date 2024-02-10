@@ -64,12 +64,13 @@ class StripAlertsApp:
 
     async def start_service(self):
         """Starts the main application."""
-        self.logger.info("StripAlerts started.")
+        setup_logging()
+        logging.info("StripAlerts started.")
         try:
             self.initialize_services()
             await self.run_tasks()
         except Exception as e:
-            self.logger.error(f"Error starting service: {e}")
+            logging.error(f"Error starting service: {e}")
             await self.stop_service()
 
     def initialize_services(self):
@@ -89,7 +90,7 @@ class StripAlertsApp:
     def signal_handler(self, sig, frame):
         """Signal handler."""
         if self.is_running() and not self.shutdown_event.is_set():
-            self.logger.debug(f"Signal {sig} received, initiating shutdown.")
+            logging.debug(f"Signal {sig} received, initiating shutdown.")
             asyncio.create_task(self.stop_service())
 
     async def run_tasks(self):
@@ -119,9 +120,9 @@ class StripAlertsApp:
             if self.led_controller:
                 await self.led_controller.stop_animation()
         except Exception as e:
-            self.logger.error(f"Error stopping animation: {e}")
+            logging.error(f"Error stopping animation: {e}")
 
-        self.logger.info("StripAlerts stopped.")
+        logging.info("StripAlerts stopped.")
         await self.get_logs()
 
     async def cancel_task(self, task):
@@ -136,26 +137,25 @@ class StripAlertsApp:
     async def get_logs(self):
         """Retrieve log contents."""
         try:
-            await LogAligner().align_log_entries()
+            await LogAligner(delete_original=True).align_log_entries()
         except FileNotFoundError:
-            self.logger.error("Log file not found.")
+            logging.error("Log file not found.")
 
     def is_running(self):
         """Check if the application is currently running."""
         return not self.shutdown_event.is_set()
 
     @staticmethod
-    async def run_app():
-        """Run the StripAlerts application."""
+    async def run_standalone():
+        """Run standalone."""
         app = StripAlertsApp()
         await app.start_service()
 
 
 def main():
     """Main function to start the StripAlerts application."""
-    setup_logging()
     try:
-        asyncio.run(StripAlertsApp.run_app())
+        asyncio.run(StripAlertsApp.run_standalone())
     except (KeyboardInterrupt, SystemExit, asyncio.CancelledError):
         pass
 
