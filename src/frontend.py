@@ -30,12 +30,12 @@ class StripAlertsController:
 
 ui.colors(primary="#0c6a93")
 ui.colors(secondary="#f47321")
-controller = StripAlertsController()
 button_style = "padding: 10px 20px; border: none; border-radius: 20px; cursor: pointer;"
 
 
 def control_elements():
     """Create control elements."""
+    controller = StripAlertsController()
     with ui.row().style("margin: auto;"):
         start_button = (
             ui.button(
@@ -64,11 +64,9 @@ def control_elements():
 @ui.page("/")
 async def index():
     """Run the GUI."""
-    with ui.element().style(
-        add="max-width: 600px; margin: auto; padding-top: 20px;"
-    ) as root_element:
+    with ui.element().style(add="max-width: 600px; margin: auto; padding-top: 20px;"):
         with ui.row():
-            title = ui.label("StripAlerts").style(
+            ui.label("StripAlerts").style(
                 "font-size: 24px; font-weight: bold; margin:auto; margin-bottom: 20px;"
             )
         control_elements()
