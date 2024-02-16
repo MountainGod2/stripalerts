@@ -158,8 +158,10 @@ def main():
     """Main function to start the StripAlerts application."""
     try:
         asyncio.run(StripAlertsApp.run_standalone())
-    except (KeyboardInterrupt, SystemExit, asyncio.CancelledError):
+    except (KeyboardInterrupt, asyncio.CancelledError):
         pass
+    except SystemExit:
+        raise
     finally:
         asyncio.get_event_loop().close()
 
