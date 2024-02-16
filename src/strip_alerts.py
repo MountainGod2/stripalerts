@@ -161,6 +161,7 @@ def main():
     except (KeyboardInterrupt, asyncio.CancelledError):
         pass
     except SystemExit as e:
+        logging.error(f"SystemExit: {e}")
         raise e
     finally:
         asyncio.get_event_loop().close()
