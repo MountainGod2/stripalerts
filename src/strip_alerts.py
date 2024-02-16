@@ -160,8 +160,8 @@ def main():
         asyncio.run(StripAlertsApp.run_standalone())
     except (KeyboardInterrupt, asyncio.CancelledError):
         pass
-    except SystemExit:
-        raise
+    except SystemExit as e:
+        raise e
     finally:
         asyncio.get_event_loop().close()
 
