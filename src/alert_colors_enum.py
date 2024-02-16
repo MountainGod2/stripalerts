@@ -17,9 +17,6 @@ class AlertColor(Enum):
         BLACK (tuple): RGB value for black.
     """
 
-    # def __iter__(self):
-    #     return iter(AlertColors.__members__)
-
     RED = (255, 0, 0)
     ORANGE = (255, 165, 0)
     YELLOW = (255, 255, 0)

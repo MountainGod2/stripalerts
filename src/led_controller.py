@@ -8,8 +8,10 @@ from adafruit_led_animation.animation import pulse, rainbow, rainbowsparkle, sol
 from adafruit_led_animation.sequence import AnimationSequence
 
 from alert_colors_enum import AlertColor
-from constants import (
+from app_config import (
+    ALERT_DURATION,
     ANIMATION_SPEED,
+    COLOR_DURATION,
     PULSE_PERIOD,
     PULSE_SPEED,
     RAINBOW_PERIOD,
@@ -19,8 +21,6 @@ from constants import (
     SPARKLE_NUM_SPARKLES,
     SPARKLE_PERIOD,
     SPARKLE_SPEED,
-    AlertConfig,
-    LEDConfig,
 )
 
 
@@ -42,8 +42,6 @@ class LEDController:
         self.current_color = None
         self.color_set_time = None
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.led_config = LEDConfig()
-        self.alert_config = AlertConfig()
 
     def create_animations(self):
         """
@@ -117,7 +115,7 @@ class LEDController:
             if (
                 self.current_color
                 and self.color_set_time
-                and (time.time() - self.color_set_time > self.alert_config.color_duration)
+                and (time.time() - self.color_set_time > COLOR_DURATION)
             ):
                 self.current_color = None
                 self.logger.info("Color alert duration expired. Resetting to rainbow.")
@@ -130,7 +128,7 @@ class LEDController:
         previous_state = self.animations.current_animation.name
         self.logger.debug("Activating normal alert.")
         self.animations.activate("sparkle")
-        await asyncio.sleep(self.alert_config.alert_duration)
+        await asyncio.sleep(ALERT_DURATION)
         self.animations.activate(previous_state)
 
     async def trigger_color_alert(self, color):
@@ -144,11 +142,11 @@ class LEDController:
         self.color_set_time = time.time()
         self.logger.debug(f"Activating color alert: {color.name.lower()}.")
         self.animations.activate(f"{color.name}_pulse")
-        await asyncio.sleep(self.alert_config.alert_duration)
+        await asyncio.sleep(ALERT_DURATION)
         color_time = (
-            f"{self.alert_config.color_duration} seconds"
-            if self.alert_config.color_duration < SECONDS_PER_MIN
-            else f"{self.alert_config.color_duration // SECONDS_PER_MIN} minutes"
+            f"{COLOR_DURATION} seconds"
+            if COLOR_DURATION < SECONDS_PER_MIN
+            else f"{COLOR_DURATION // SECONDS_PER_MIN} minutes"
         )
         self.logger.info(f"Setting lights to {color.name.lower()} for {color_time}.")
         self.animations.activate(color.name)

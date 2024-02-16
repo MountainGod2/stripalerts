@@ -6,3 +6,4 @@ aiohttp==3.9.1
 backoff==2.2.1
 pydantic==2.5.3
 python-dotenv==1.0.0
+nicegui==1.4.15
