@@ -1,9 +1,10 @@
+"""Event handler module."""
 import logging
 
 from pydantic import BaseModel, ValidationError
 
 from alert_colors_enum import AlertColor
-from constants import AlertConfig
+from app_config import TOKENS_FOR_COLOR_ALERT
 
 
 # Define Pydantic models for structured data
@@ -30,7 +31,6 @@ class EventHandler:
     """
 
     def __init__(self):
-        self.alert_config = AlertConfig()
         self.logger = logging.getLogger(self.__class__.__name__)
 
     async def process_events(self, events_gen, led_controller):
@@ -54,7 +54,7 @@ class EventHandler:
     async def process_tip(self, event_dict, led_controller):
         try:
             self.logger.info("Tip received.")
-            # Assuming the relevant data is nested under 'object' key in event_dict
+            # Relevant data is nested under 'object' key in event_dict
             tip_data = event_dict.get("object", {})
             tip_event = TipEvent(**tip_data)
             username = tip_event.user.username
@@ -62,11 +62,12 @@ class EventHandler:
             message = self.clean_message(tip_event.tip.message)
             color = AlertColor.from_string(message)
 
-            self.logger.debug(
-                f"Tip from {username}: {tokens} tokens. Message: '{message}'"
-            )
+            # Format message for logging and only add the message if it exists
+            if message:
+                message = f"Message: {message}"
+            self.logger.debug(f"Tip from {username}: {tokens} tokens. {message}")
 
-            if tokens >= self.alert_config.tokens_for_color_alert and color:
+            if tokens >= TOKENS_FOR_COLOR_ALERT and color:
                 await led_controller.trigger_color_alert(color)
             else:
                 await led_controller.trigger_normal_alert()

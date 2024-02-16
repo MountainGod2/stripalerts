@@ -7,7 +7,8 @@ import signal
 import board
 import neopixel
 
-from constants import APIConfig, LEDConfig, API_TIMEOUT
+from api_config import APIConfig
+from app_config import API_TIMEOUT, LED_BRIGHTNESS, LED_COUNT, LED_PIN
 from event_handler import EventHandler
 from event_poller import EventPoller
 from led_controller import LEDController
@@ -28,18 +29,18 @@ class AppConfig:
 
     def __init__(self):
         self.api_config = APIConfig()
-        self.led_config = LEDConfig()
-        self.pixel_pin = getattr(board, self.led_config.pin)
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def initialize_led_strip(self):
         """Initialize the NeoPixel LED strip."""
         try:
             return neopixel.NeoPixel(
-                pin=self.pixel_pin,
-                n=self.led_config.count,
+                pin=getattr(board, LED_PIN),
+                n=LED_COUNT,
                 auto_write=False,
-                brightness=self.led_config.brightness,
+                bpp=3,
+                brightness=LED_BRIGHTNESS,
+                pixel_order="RGB",
             )
         except Exception as error:
             self.logger.exception(error)
@@ -64,13 +65,13 @@ class StripAlertsApp:
 
     async def start_service(self):
         """Starts the main application."""
-        setup_logging()
-        logging.info("StripAlerts started.")
+        self.logger.info("StripAlerts started.")
+        self.shutdown_event.clear()
         try:
             self.initialize_services()
             await self.run_tasks()
         except Exception as e:
-            logging.error(f"Error starting service: {e}")
+            self.logger.error(f"Error starting service: {e}")
             await self.stop_service()
 
     def initialize_services(self):
@@ -90,7 +91,7 @@ class StripAlertsApp:
     def signal_handler(self, sig, frame):
         """Signal handler."""
         if self.is_running() and not self.shutdown_event.is_set():
-            logging.debug(f"Signal {sig} received, initiating shutdown.")
+            self.logger.debug(f"Signal {sig} received, initiating shutdown.")
             asyncio.create_task(self.stop_service())
 
     async def run_tasks(self):
@@ -120,10 +121,9 @@ class StripAlertsApp:
             if self.led_controller:
                 await self.led_controller.stop_animation()
         except Exception as e:
-            logging.error(f"Error stopping animation: {e}")
+            self.logger.error(f"Error stopping animation: {e}")
 
-        logging.info("StripAlerts stopped.")
-        await self.get_logs()
+        self.logger.info("StripAlerts stopped.")
 
     async def cancel_task(self, task):
         """Cancel task if not None."""
@@ -134,13 +134,6 @@ class StripAlertsApp:
             except asyncio.CancelledError:
                 pass
 
-    async def get_logs(self):
-        """Retrieve log contents."""
-        try:
-            await LogAligner(delete_original=True).align_log_entries()
-        except FileNotFoundError:
-            logging.error("Log file not found.")
-
     def is_running(self):
         """Check if the application is currently running."""
         return not self.shutdown_event.is_set()
@@ -148,8 +141,17 @@ class StripAlertsApp:
     @staticmethod
     async def run_standalone():
         """Run standalone."""
+        setup_logging()
         app = StripAlertsApp()
         await app.start_service()
+
+
+async def align_logs():
+    """Retrieve log contents."""
+    try:
+        await LogAligner(delete_original=True).align_log_entries()
+    except FileNotFoundError:
+        logging.error("Log file not found.")
 
 
 def main():
@@ -158,6 +160,10 @@ def main():
         asyncio.run(StripAlertsApp.run_standalone())
     except (KeyboardInterrupt, SystemExit, asyncio.CancelledError):
         pass
+    finally:
+        asyncio.get_event_loop().close()
+
+        align_logs()
 
 
 if __name__ == "__main__":
