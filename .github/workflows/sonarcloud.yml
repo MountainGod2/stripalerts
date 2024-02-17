@@ -1,4 +1,4 @@
-name: SonarCloud
+name: Sonar scanner
 on:
   push:
     branches:
@@ -7,7 +7,7 @@ on:
     types: [opened, synchronize, reopened]
 jobs:
   sonarcloud:
-    name: SonarCloud
+    name: "sonar"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
