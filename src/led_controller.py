@@ -37,6 +37,12 @@ class LEDController:
     """
 
     def __init__(self, pixels):
+        """
+        Initialize LEDController.
+
+        Args:
+            pixels (neopixel.NeoPixel): NeoPixel LED strip.
+        """
         self.pixels = pixels
         self.animations = self.create_animations()
         self.current_color = None
@@ -46,6 +52,9 @@ class LEDController:
     def create_animations(self):
         """
         Create the animation sequence by combining various animations.
+
+        Returns:
+            AnimationSequence: Combined animation sequence.
         """
         rainbow_animation = self.create_rainbow_animation()
         sparkle_animation = self.create_sparkle_animation()
@@ -64,6 +73,9 @@ class LEDController:
     def create_rainbow_animation(self):
         """
         Create the rainbow animation.
+
+        Returns:
+            Rainbow: Rainbow animation instance.
         """
         return rainbow.Rainbow(
             self.pixels,
@@ -75,6 +87,9 @@ class LEDController:
     def create_sparkle_animation(self):
         """
         Create the sparkle animation.
+
+        Returns:
+            RainbowSparkle: Sparkle animation instance.
         """
         return rainbowsparkle.RainbowSparkle(
             self.pixels,
@@ -88,6 +103,9 @@ class LEDController:
     def create_pulse_animations(self):
         """
         Create a list of pulse animations for each color.
+
+        Returns:
+            list: List of Pulse animation instances.
         """
         return [
             pulse.Pulse(
@@ -103,6 +121,9 @@ class LEDController:
     def create_solid_animations(self):
         """
         Create a list of solid animations for each color.
+
+        Returns:
+            list: List of Solid animation instances.
         """
         return [
             solid.Solid(self.pixels, color=color.value, name=f"{color.name}")

@@ -1,4 +1,5 @@
 """EventPoller class."""
+
 import asyncio
 import logging
 
@@ -19,11 +20,18 @@ class EventPoller:
         logger (logging.Logger): Logger instance.
     """
 
-    def __init__(self, base_url, timeout):
+    def __init__(self, base_url: str, timeout: int):
+        """
+        Initialize EventPoller.
+
+        Args:
+            base_url (str): Base URL for the Chaturbate Events API.
+            timeout (int): Timeout for HTTP requests in seconds.
+        """
         self.base_url = base_url
         self.timeout = timeout
         self.retry_delay = INITIAL_RETRY_DELAY
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = logging.getLogger(__name__)
 
     @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=5)
     async def poll_events(self):
@@ -36,11 +44,6 @@ class EventPoller:
         async with aiohttp.ClientSession() as session:
             url = self.base_url
 
-            # NOTE: Uncomment to see initial URL for debugging (URLs are sensitive)
-            # self.logger.debug(
-            #     f"Initial URL: {url}"
-            # )
-
             while True:
                 try:
                     async with session.get(
@@ -49,7 +52,6 @@ class EventPoller:
                         if response.status == 200:
                             data = await response.json()
                             url = data["nextUrl"]
-                            # self.logger.debug(f"Next URL: {url}") # NOTE: Commented out to reduce log spam
                             self.retry_delay = INITIAL_RETRY_DELAY
                             yield data["events"]
 
@@ -67,8 +69,13 @@ class EventPoller:
                     self.logger.error(f"Client error: {error}")
                     await self.handle_error()
 
-    async def handle_error(self, server_error=False):
-        """Handle errors by waiting and increasing the retry delay."""
+    async def handle_error(self, server_error: bool = False):
+        """
+        Handle errors by waiting and increasing the retry delay.
+
+        Args:
+            server_error (bool): Indicates if the error is a server error.
+        """
         if server_error:
             self.retry_delay = INITIAL_RETRY_DELAY
         else:
